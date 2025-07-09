@@ -1,0 +1,27 @@
+# Python
+db.sqlite3  # Ignorowanie bazy danych SQLite
+*.db
+*.log
+*.pot
+*.swp
+*.pem
+*.crt
+*.key
+#
+
+# Virtual environment
+venv\           # Ignorowanie folderu wirtualnego środowiska
+
+
+# IDE files
+.idea\           # Ignorowanie folderu PyCharm/IntelliJ
+
+#Migrations
+MechanicallyApp\migrations\
+
+# OS-specific files
+.DS_Store       # Ignorowanie plików systemowych w macOS
+Thumbs.db       # Ignorowanie plików systemowych w Windows
+
+#Envirovment variables
+.env
