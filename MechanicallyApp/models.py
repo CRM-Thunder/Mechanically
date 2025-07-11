@@ -1,18 +1,17 @@
 from django.core.validators import MinLengthValidator
 from django.db import models
 from django.contrib.auth.models import AbstractUser
-from .validators import first_name_validator, last_name_validator
 import uuid
 class User(AbstractUser):
-    #odwzorować mechanizm tworzenia username jak na usosie, czyli 3 litery imienia 3 litery nazwiska i 4 cyfrowy kod
+    #odwzorować mechanizm tworzenia username jak na usosie, czyli 3 litery imienia 3 litery nazwiska i 4 cyfrowy kod, dodać do tego regex jak się uda zaimplementować
     id=models.UUIDField(primary_key=True,default=uuid.uuid4,editable=False)
     username = models.CharField(max_length=10, unique=True,
     validators=[
         MinLengthValidator(10)
     ])
     email=models.EmailField(unique=True)
-    first_name = models.CharField(max_length=20,validators=[first_name_validator,MinLengthValidator(3)])
-    last_name = models.CharField(max_length=30,validators=[last_name_validator,MinLengthValidator(3)])
+    first_name = models.CharField(max_length=20,validators=[MinLengthValidator(3)])
+    last_name = models.CharField(max_length=30,validators=[MinLengthValidator(3)])
     REQUIRED_FIELDS = ['email','first_name','last_name']
     def __str__(self):
         return self.username
@@ -78,7 +77,7 @@ class Vehicle(models.Model):
 
 class Manufacturer(models.Model):
     id=models.UUIDField(primary_key=True,default=uuid.uuid4,editable=False)
-    name=models.CharField(max_length=20,unique=True)
+    name=models.CharField(max_length=20,unique=True, validators=[MinLengthValidator(3)])
     def __str__(self):
         return self.name
 
@@ -134,4 +133,4 @@ class RepairReport(models.Model):
     report_date=models.DateTimeField(auto_now_add=True)
     ready_for_review=models.BooleanField(default=False)
     # noinspection PyUnresolvedReferences
-    status=models.CharField(max_length=1,choices=RepairStatusChoices.choices,default=RepairStatusChoices.PENDING)
+    status=models.CharField(max_length=1,choices=RepairStatusChoices.choices,default=RepairStatusChoices.ACTIVE)
