@@ -1,6 +1,7 @@
 from django.core.validators import MinLengthValidator
 from django.db import models
 from django.contrib.auth.models import AbstractUser
+from .validators import first_name_validator, last_name_validator
 import uuid
 class User(AbstractUser):
     #odwzorować mechanizm tworzenia username jak na usosie, czyli 3 litery imienia 3 litery nazwiska i 4 cyfrowy kod
@@ -10,8 +11,8 @@ class User(AbstractUser):
         MinLengthValidator(10)
     ])
     email=models.EmailField(unique=True)
-    first_name = models.CharField(max_length=20,validators=[MinLengthValidator(3)])
-    last_name = models.CharField(max_length=30,validators=[MinLengthValidator(3)])
+    first_name = models.CharField(max_length=20,validators=[first_name_validator,MinLengthValidator(3)])
+    last_name = models.CharField(max_length=30,validators=[last_name_validator,MinLengthValidator(3)])
     REQUIRED_FIELDS = ['email','first_name','last_name']
     def __str__(self):
         return self.username
@@ -41,7 +42,7 @@ class Vehicle(models.Model):
 
     class FuelTypeChoices(models.TextChoices):
         #benzyna
-        petrol = 'P'
+        PETROL = 'P'
         # diesel
         DIESEL = 'D'
         #elektryczność
@@ -62,7 +63,7 @@ class Vehicle(models.Model):
     id=models.UUIDField(primary_key=True,default=uuid.uuid4,editable=False)
     vin=models.CharField(max_length=17,unique=True, validators=[MinLengthValidator(17)])
     kilometers=models.PositiveIntegerField()
-    manufacturer=models.CharField(max_length=20)
+    manufacturer=models.ForeignKey('Manufacturer',on_delete=models.CASCADE, related_name='vehicles')
     vehicle_model=models.CharField(max_length=20)
     year=models.PositiveIntegerField()
     # noinspection PyUnresolvedReferences
@@ -72,7 +73,15 @@ class Vehicle(models.Model):
     # noinspection PyUnresolvedReferences
     availability=models.CharField(max_length=1, choices=AvailabilityChoices.choices, default=AvailabilityChoices.AVAILABLE)
     #musi być zabezpieczenie że może być przypisany tylko do brancha
-    branch=models.ForeignKey('Location',on_delete=models.CASCADE)
+    branch=models.ForeignKey('Location',on_delete=models.CASCADE, related_name='vehicles')
+
+
+class Manufacturer(models.Model):
+    id=models.UUIDField(primary_key=True,default=uuid.uuid4,editable=False)
+    name=models.CharField(max_length=20,unique=True)
+    def __str__(self):
+        return self.name
+
 
 class Location(models.Model):
     class LocationTypeChoices(models.TextChoices):
@@ -91,7 +100,7 @@ class Location(models.Model):
 #należy wprowadzić zabezpieczenie, że do warsztatu może zostać przydzielony tylko mechanik, a do brancha tylko standardowy pracownik
 class UserLocationAssignment(models.Model):
     id=models.UUIDField(primary_key=True,default=uuid.uuid4,editable=False)
-    user=models.ForeignKey(User,on_delete=models.CASCADE)
+    user=models.OneToOneField(User,on_delete=models.CASCADE)
     location=models.ForeignKey(Location,on_delete=models.CASCADE)
     assign_date=models.DateTimeField(auto_now_add=True)
 
@@ -102,12 +111,12 @@ class FailureReport(models.Model):
         DISMISSED='D'
         RESOLVED='R'
     id=models.UUIDField(primary_key=True,default=uuid.uuid4,editable=False)
-    vehicle=models.ForeignKey(Vehicle,on_delete=models.CASCADE)
+    vehicle=models.ForeignKey(Vehicle,on_delete=models.CASCADE, related_name='failure_reports')
     description=models.TextField()
-    workshop=models.ForeignKey('Location',on_delete=models.CASCADE, null=True, blank=True)
+    workshop=models.ForeignKey('Location',on_delete=models.CASCADE, null=True, blank=True, related_name='failure_reports')
     report_date=models.DateTimeField(auto_now_add=True)
     #zabezpieczyć aby tylko standardowy/menadżer mógł być autorem
-    report_author=models.ForeignKey(User,on_delete=models.CASCADE)
+    report_author=models.ForeignKey(User,on_delete=models.CASCADE, related_name='failure_reports')
     # noinspection PyUnresolvedReferences
     status=models.CharField(max_length=1,choices=FailureStatusChoices.choices,default=FailureStatusChoices.PENDING)
     last_status_change_date=models.DateTimeField(auto_now=True)
@@ -118,7 +127,7 @@ class RepairReport(models.Model):
         READY='R'
         HISTORIC='H'
     id=models.UUIDField(primary_key=True,default=uuid.uuid4,editable=False)
-    failure_report=models.ForeignKey(FailureReport,on_delete=models.CASCADE)
+    failure_report=models.OneToOneField(FailureReport,on_delete=models.CASCADE, related_name='repair_report')
     condition_analysis=models.TextField()
     repair_action=models.TextField()
     cost=models.DecimalField(max_digits=8,decimal_places=2)
