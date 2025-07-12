@@ -1,0 +1,25 @@
+from rest_framework.permissions import BasePermission
+
+class IsAdmin(BasePermission):
+    def has_permission(self, request, view):
+        if request.user.is_authenticated and request.user.is_active and request.user.role == 'admin':
+            return True
+        return False
+
+class IsManager(BasePermission):
+    def has_permission(self, request, view):
+        if request.user.is_authenticated and request.user.is_active and request.user.role == 'manager':
+            return True
+        return False
+
+class IsStandard(BasePermission):
+    def has_permission(self, request, view):
+        if request.user.is_authenticated and request.user.is_active and request.user.role == 'standard':
+            return True
+        return False
+
+class IsMechanic(BasePermission):
+    def has_permission(self, request, view):
+        if request.user.is_authenticated and request.user.is_active and request.user.role == 'mechanic':
+            return True
+        return False

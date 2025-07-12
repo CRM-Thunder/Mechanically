@@ -3,8 +3,18 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser
 import uuid
 class User(AbstractUser):
+    ROLE_CHOICES=(
+        ('standard','Standard'),
+        ('mechanic','Mechanic'),
+        ('manager','Manager'),
+        ('admin','Administrator')
+    )
+    role=models.CharField(max_length=10,choices=ROLE_CHOICES,default='standard')
     #odwzorować mechanizm tworzenia username jak na usosie, czyli 3 litery imienia 3 litery nazwiska i 4 cyfrowy kod, dodać do tego regex jak się uda zaimplementować
     id=models.UUIDField(primary_key=True,default=uuid.uuid4,editable=False)
+    #nie korzystam z tych pól, opieram się tylko o własne role, co ułatwia unifikację zarządzania uprawnieniami
+    is_staff = models.BooleanField(default=False)
+    is_superuser = models.BooleanField(default=False)
     username = models.CharField(max_length=10, unique=True,
     validators=[
         MinLengthValidator(10)
@@ -71,8 +81,8 @@ class Vehicle(models.Model):
     fuel_type=models.CharField(max_length=2, choices=FuelTypeChoices.choices, default=FuelTypeChoices.OTHER)
     # noinspection PyUnresolvedReferences
     availability=models.CharField(max_length=1, choices=AvailabilityChoices.choices, default=AvailabilityChoices.AVAILABLE)
-    #musi być zabezpieczenie że może być przypisany tylko do brancha
-    branch=models.ForeignKey('Location',on_delete=models.CASCADE, related_name='vehicles')
+    #musi być zabezpieczenie że może być przypisany tylko do brancha, na poziomie Serializera lub stworzyć własny trigger
+    branch=models.ForeignKey('Location',on_delete=models.SET_NULL, related_name='vehicles', null=True, blank=True)
 
 
 class Manufacturer(models.Model):
@@ -88,8 +98,8 @@ class Location(models.Model):
         WORKSHOP='W'
 
     name = models.CharField(max_length=100)
-    phone = models.CharField(max_length=9, blank=True)
-    email = models.EmailField(blank=True)
+    phone = models.CharField(max_length=9)
+    email = models.EmailField()
     id=models.UUIDField(primary_key=True,default=uuid.uuid4,editable=False)
     #narazie jako pojedyncze pole, w razie czego można rozbudować
     address=models.CharField(max_length=50)
@@ -112,10 +122,10 @@ class FailureReport(models.Model):
     id=models.UUIDField(primary_key=True,default=uuid.uuid4,editable=False)
     vehicle=models.ForeignKey(Vehicle,on_delete=models.CASCADE, related_name='failure_reports')
     description=models.TextField()
-    workshop=models.ForeignKey('Location',on_delete=models.CASCADE, null=True, blank=True, related_name='failure_reports')
+    workshop=models.ForeignKey('Location',on_delete=models.SET_NULL, null=True, blank=True, related_name='failure_reports')
     report_date=models.DateTimeField(auto_now_add=True)
     #zabezpieczyć aby tylko standardowy/menadżer mógł być autorem
-    report_author=models.ForeignKey(User,on_delete=models.CASCADE, related_name='failure_reports')
+    report_author=models.ForeignKey(User,on_delete=models.SET_NULL, related_name='failure_reports',null=True)
     # noinspection PyUnresolvedReferences
     status=models.CharField(max_length=1,choices=FailureStatusChoices.choices,default=FailureStatusChoices.PENDING)
     last_status_change_date=models.DateTimeField(auto_now=True)
