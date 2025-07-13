@@ -22,6 +22,7 @@ class User(AbstractUser):
     email=models.EmailField(unique=True)
     first_name = models.CharField(max_length=20,validators=[MinLengthValidator(3)])
     last_name = models.CharField(max_length=30,validators=[MinLengthValidator(3)])
+    phone_number=models.CharField(max_length=9, unique=True, validators=[MinLengthValidator(9)])
     REQUIRED_FIELDS = ['email','first_name','last_name']
     def __str__(self):
         return self.username
@@ -98,7 +99,7 @@ class Location(models.Model):
         WORKSHOP='W'
 
     name = models.CharField(max_length=100)
-    phone = models.CharField(max_length=9)
+    phone_number = models.CharField(max_length=9, unique=True, validators=[MinLengthValidator(9)])
     email = models.EmailField()
     id=models.UUIDField(primary_key=True,default=uuid.uuid4,editable=False)
     #narazie jako pojedyncze pole, w razie czego można rozbudować
