@@ -45,7 +45,7 @@ class UserSerializer(serializers.ModelSerializer):
         generated_username=generate_username(first_name, last_name)
         while User.objects.filter(username=generated_username).exists():
             generated_username=generate_username(first_name, last_name)
-        user=User.objects.create(username=generated_username, **validated_data)
+        user=User.objects.create_user(username=generated_username, **validated_data)
         return user
 
     def update(self, instance, validated_data):

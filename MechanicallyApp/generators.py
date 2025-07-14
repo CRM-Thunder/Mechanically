@@ -1,6 +1,8 @@
 import random
 
 def generate_username(first_name, last_name):
+    first_name=first_name.lower()
+    last_name=last_name.lower()
     random_number=random.randint(1,9999)
     random_number_str=str(random_number)
     random_number_str_2=(4-len(random_number_str))*'0'+random_number_str
