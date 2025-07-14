@@ -110,8 +110,8 @@ class Location(models.Model):
 #należy wprowadzić zabezpieczenie, że do warsztatu może zostać przydzielony tylko mechanik, a do brancha tylko standardowy pracownik
 class UserLocationAssignment(models.Model):
     id=models.UUIDField(primary_key=True,default=uuid.uuid4,editable=False)
-    user=models.OneToOneField(User,on_delete=models.CASCADE)
-    location=models.ForeignKey(Location,on_delete=models.CASCADE)
+    user=models.OneToOneField(User,on_delete=models.CASCADE, related_name='user_location_assignment')
+    location=models.ForeignKey(Location,on_delete=models.CASCADE, related_name='user_location_assignment')
     assign_date=models.DateTimeField(auto_now_add=True)
 
 class FailureReport(models.Model):

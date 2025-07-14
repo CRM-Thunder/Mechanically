@@ -34,7 +34,6 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
-    'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
@@ -129,13 +128,13 @@ USE_TZ = True
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 AUTH_USER_MODEL = 'MechanicallyApp.User'
-
+#po wprowadzeniu uwierzytelniania i autoryzacji wprowadzić: 'MechanicallyApp.permissions.IsAdmin' jako DEFAULT_PERMISSION_CLASSES
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
 
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': [
-        'MechanicallyApp.permissions.IsAdmin',
+        'rest_framework.permissions.AllowAny',
     ]
 }

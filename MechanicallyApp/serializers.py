@@ -1,14 +1,25 @@
 from rest_framework import serializers
 
-from .models import Manufacturer, User, Location
+from .models import Manufacturer, User, Location, UserLocationAssignment
 from .validators import manufacturer_name_validator, first_name_validator, last_name_validator, phone_number_validator, location_name_validator
 from .generators import generate_username
 
+
+
+#serializer służący do wyświetlania informacji o przydziale z poziomu UserSerializer
+class UserLocationAssignmentForUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserLocationAssignment
+        fields = ['id','location','assign_date']
+        read_only_fields = '__all__'
+
+#serializer do operacji na użytkownikach przez administratora oraz wyświetlania informacji o własnym koncie, w przyszłości utworzę serializer read_only bez username dla pozostałych
 class UserSerializer(serializers.ModelSerializer):
-    #zastanowić się nad osobnym serializerem read only, który by zawierał username bo to info wrażliwe po części, a nie wszyscy muszą mieć do niego dostęp
+    user_location_assignment=UserLocationAssignmentForUserSerializer(read_only=True)
+    #zastanowić się nad osobnym serializerem read only, który by zawierał username, bo to info wrażliwe po części, a nie wszyscy muszą mieć do niego dostęp
     class Meta:
         model = User
-        fields = ['id','username','first_name','last_name','email','phone_number', 'role']
+        fields = ['id','username','first_name','last_name','email','phone_number', 'role', 'user_location_assignment']
         read_only_fields = ['id','username']
 
     def validate_first_name(self, value):
@@ -51,7 +62,7 @@ class UserSerializer(serializers.ModelSerializer):
         return instance
 
 
-
+#serializer służący do wypisywania, dodawania oraz aktualizowania Manufacturer
 class ManufacturerSerializer(serializers.ModelSerializer):
     id=serializers.UUIDField(read_only=True)
     class Meta:
@@ -63,6 +74,14 @@ class ManufacturerSerializer(serializers.ModelSerializer):
         return value
 
 
+#serializer do przypisywania użytkownika do danej lokalizacji
+class UserLocationAssignmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserLocationAssignment
+        fields = ['id','user','location','assign_date']
+        read_only_fields = ['id','assign_date']
+
+#serializer służący do wypisywania, dodawania oraz aktualizowania Location
 class LocationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Location
