@@ -85,7 +85,6 @@ class UserLocationAssignmentSerializer(serializers.ModelSerializer):
 
 #serializer służący do wypisywania, dodawania oraz aktualizowania Location
 class LocationSerializer(serializers.ModelSerializer):
-    location_type=serializers.CharField(max_length=1)
     class Meta:
         model = Location
         fields = '__all__'
@@ -100,9 +99,14 @@ class LocationSerializer(serializers.ModelSerializer):
         return value
 
     def validate_location_type(self, value):
+        if self.instance and value!=self.instance.location_type:
+            raise serializers.ValidationError('Location type cannot be changed')
         valid_location_types = [choice[0] for choice in Location.LocationTypeChoices.choices]
         if value not in valid_location_types:
             raise serializers.ValidationError('Location type must be one of the following: %s' % ', '.join(valid_location_types))
+        return value
+
+
 
 #serializer służący do wypisania informacji o lokacji mechanika/standarda
 class UserNestedLocationAssignmentSerializer(serializers.ModelSerializer):

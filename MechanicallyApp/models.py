@@ -105,7 +105,7 @@ class Location(models.Model):
     #narazie jako pojedyncze pole, w razie czego można rozbudować
     address=models.CharField(max_length=50)
     # noinspection PyUnresolvedReferences
-    location_type=models.CharField(max_length=1,choices=LocationTypeChoices.choices,default=LocationTypeChoices.BRANCH)
+    location_type=models.CharField(max_length=1,choices=LocationTypeChoices.choices)
 
 #należy wprowadzić zabezpieczenie, że do warsztatu może zostać przydzielony tylko mechanik, a do brancha tylko standardowy pracownik
 class UserLocationAssignment(models.Model):
