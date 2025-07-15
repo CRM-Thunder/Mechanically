@@ -6,6 +6,12 @@ class IsAdmin(BasePermission):
             return True
         return False
 
+class IsSuperUser(BasePermission):
+    def has_permission(self, request, view):
+        if request.user.is_authenticated and request.user.is_active and request.user.role == 'admin' and request.user.is_superuser:
+            return True
+        return False
+
 class IsManager(BasePermission):
     def has_permission(self, request, view):
         if request.user.is_authenticated and request.user.is_active and request.user.role == 'manager':

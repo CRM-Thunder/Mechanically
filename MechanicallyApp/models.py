@@ -98,7 +98,7 @@ class Location(models.Model):
         BRANCH='B'
         WORKSHOP='W'
 
-    name = models.CharField(max_length=100)
+    name = models.CharField(max_length=100, unique=True, validators=[MinLengthValidator(3)])
     phone_number = models.CharField(max_length=9, unique=True, validators=[MinLengthValidator(9)])
     email = models.EmailField()
     id=models.UUIDField(primary_key=True,default=uuid.uuid4,editable=False)

@@ -10,8 +10,10 @@ from .generators import generate_username
 class UserLocationAssignmentForUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserLocationAssignment
-        fields = ['id','location','assign_date']
+        fields = ['location','assign_date']
         read_only_fields = '__all__'
+
+
 
 #serializer do operacji na użytkownikach przez administratora oraz wyświetlania informacji o własnym koncie, w przyszłości utworzę serializer read_only bez username dla pozostałych
 class UserSerializer(serializers.ModelSerializer):
@@ -20,7 +22,7 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['id','username','first_name','last_name','email','phone_number', 'role', 'user_location_assignment']
-        read_only_fields = ['id','username']
+        read_only_fields = ['id','username','user_location_assignment']
 
     def validate_first_name(self, value):
         first_name_validator(value)
@@ -64,10 +66,10 @@ class UserSerializer(serializers.ModelSerializer):
 
 #serializer służący do wypisywania, dodawania oraz aktualizowania Manufacturer
 class ManufacturerSerializer(serializers.ModelSerializer):
-    id=serializers.UUIDField(read_only=True)
     class Meta:
         model = Manufacturer
-        fields = ['id','name']
+        fields = '__all__'
+        read_only_fields = ['id']
 
     def validate_name(self, value):
         manufacturer_name_validator(value)
@@ -83,20 +85,29 @@ class UserLocationAssignmentSerializer(serializers.ModelSerializer):
 
 #serializer służący do wypisywania, dodawania oraz aktualizowania Location
 class LocationSerializer(serializers.ModelSerializer):
+    location_type=serializers.CharField(max_length=1)
     class Meta:
         model = Location
         fields = '__all__'
         read_only_fields = ['id']
 
-        def validate_name(self, value):
-            location_name_validator(value)
-            return value
+    def validate_name(self, value):
+        location_name_validator(value)
+        return value
 
-        def validate_phone_number(self,value):
-            phone_number_validator(value)
-            return value
+    def validate_phone_number(self,value):
+        phone_number_validator(value)
+        return value
 
-        def validate_location_type(self, value):
-            valid_location_types = [choice[0] for choice in Location.LocationTypeChoices.choices]
-            if value not in valid_location_types:
-                raise serializers.ValidationError('Location type must be one of the following: %s' % ', '.join(valid_location_types))
+    def validate_location_type(self, value):
+        valid_location_types = [choice[0] for choice in Location.LocationTypeChoices.choices]
+        if value not in valid_location_types:
+            raise serializers.ValidationError('Location type must be one of the following: %s' % ', '.join(valid_location_types))
+
+#serializer służący do wypisania informacji o lokacji mechanika/standarda
+class UserNestedLocationAssignmentSerializer(serializers.ModelSerializer):
+    location=LocationSerializer(read_only=True)
+    class Meta:
+        model = UserLocationAssignment
+        fields = ['location','assign_date']
+        read_only_fields = '__all__'

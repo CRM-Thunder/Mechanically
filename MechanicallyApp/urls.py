@@ -1,6 +1,13 @@
 from django.urls import path
 from . import views
+from rest_framework_simplejwt.views import (TokenObtainPairView, TokenRefreshView)
 
 urlpatterns = [
-    path('manufacturers/',views.manufacturer_list)
+    path('token/', TokenObtainPairView.as_view()),
+    path('token/refresh/', TokenRefreshView.as_view()),
+    path('manufacturers/',views.ManufacturerListCreateAPIView.as_view(), name='manufacturer-list'),
+    path('manufacturers/<uuid:pk>/',views.ManufacturerRetrieveUpdateDestroyAPIView.as_view(), name='manufacturer-detail'),
+    path('locations/',views.LocationListCreateAPIView.as_view(), name='location-list'),
+    path('locations/<uuid:pk>/',views.LocationRetrieveUpdateDestroyAPIView.as_view(), name='location-detail'),
+    path('my-location/',views.UserLocationRetrieveAPIView.as_view(), name='assigned-location'),
 ]

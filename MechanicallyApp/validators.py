@@ -21,12 +21,12 @@ def phone_number_validator(phone_number):
         raise serializers.ValidationError('Phone number must be in correct format: XXXXXXXXX')
 
 def manufacturer_name_validator(manufacturer_name):
-    if not re.match(r'^[A-Z]*$', manufacturer_name):
-        raise serializers.ValidationError('Manufacturer name must consist of capital letters only.')
+    if not re.match(r'^[A-Z]+(?: [A-Z]+)*$', manufacturer_name):
+        raise serializers.ValidationError('Manufacturer name must consist of capital letters only and only one space between words.')
 
 def location_name_validator(location_name):
     if not re.match(r'^[A-Z]*$', location_name):
-        raise serializers.ValidationError('Location name must consist of capital letters only.')
+        raise serializers.ValidationError('Location name must consist of capital letters only ')
 
 def vehicle_year_validator(vehicle_year):
     current_year=date.today().year
