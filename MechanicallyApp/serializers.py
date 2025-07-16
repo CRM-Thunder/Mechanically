@@ -1,7 +1,7 @@
 from rest_framework import serializers
 
-from .models import Manufacturer, User, Location, UserLocationAssignment
-from .validators import manufacturer_name_validator, first_name_validator, last_name_validator, phone_number_validator, location_name_validator
+from .models import Manufacturer, User, Location, UserLocationAssignment, Vehicle
+from .validators import manufacturer_name_validator, first_name_validator, last_name_validator, phone_number_validator, location_name_validator, vin_validator, vehicle_model_validator, vehicle_year_validator
 from .generators import generate_username
 
 
@@ -40,6 +40,7 @@ class UserSerializer(serializers.ModelSerializer):
         valid_roles = [choice[0] for choice in User.ROLE_CHOICES]
         if value not in valid_roles:
             raise serializers.ValidationError('Role must be one of the following: %s' % ', '.join(valid_roles))
+        return value
 
     def create(self, validated_data):
         first_name=validated_data.get('first_name')
@@ -49,7 +50,7 @@ class UserSerializer(serializers.ModelSerializer):
             generated_username=generate_username(first_name, last_name)
         user=User.objects.create_user(username=generated_username, **validated_data)
         return user
-
+    #zrobić osobny serializer do update???
     def update(self, instance, validated_data):
         instance.first_name=validated_data.get('first_name', instance.first_name)
         instance.last_name=validated_data.get('last_name', instance.last_name)
@@ -102,6 +103,7 @@ class LocationSerializer(serializers.ModelSerializer):
     def validate_location_type(self, value):
         if self.instance and value!=self.instance.location_type:
             raise serializers.ValidationError('Location type cannot be changed')
+        # noinspection PyUnresolvedReferences
         valid_location_types = [choice[0] for choice in Location.LocationTypeChoices.choices]
         if value not in valid_location_types:
             raise serializers.ValidationError('Location type must be one of the following: %s' % ', '.join(valid_location_types))
@@ -116,3 +118,63 @@ class UserNestedLocationAssignmentSerializer(serializers.ModelSerializer):
         model = UserLocationAssignment
         fields = ['location','assign_date']
         read_only_fields = '__all__'
+
+#serializer do wypisywania wszystkich informacji o pojeździe
+class VehicleRetrieveSerializer(serializers.ModelSerializer):
+    manufacturer=ManufacturerSerializer(read_only=True)
+    branch=LocationSerializer(read_only=True)
+    class Meta:
+        model=Vehicle
+        fields='__all__'
+        read_only_fields='__all__'
+
+#serializer do listowania informacji o pojeździe
+class VehicleListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model=Vehicle
+        fields=['id','manufacturer','vehicle_model','year','branch']
+        read_only_fields='__all__'
+
+#serializer do dodawania i aktualizacji pojazdu
+class VehicleCreateUpdateSerializer(serializers.ModelSerializer):
+    vehicle_type = serializers.CharField(max_length=2)
+    fuel_type = serializers.CharField(max_length=2)
+    availability = serializers.CharField(max_length=1)
+    class Meta:
+        model = Vehicle
+        fields = ['id','vin','kilometers','manufacturer','vehicle_model','year','vehicle_type','fuel_type','branch']
+        read_only_fields = ['id']
+
+    def validate_vin(self,value):
+        vin_validator(value)
+        return value
+
+    def validate_vehicle_model(self, value):
+        vehicle_model_validator(value)
+        return value
+
+    def validate_year(self, value):
+        vehicle_year_validator(value)
+        return value
+
+    def validate_vehicle_type(self,value):
+        # noinspection PyUnresolvedReferences
+        valid_vehicle_types = [choice[0] for choice in Vehicle.VehicleTypeChoices.choices]
+        if value not in valid_vehicle_types:
+            raise serializers.ValidationError('Vehicle type must be one of the following: %s' % ', '.join(valid_vehicle_types))
+        return value
+
+    def validate_fuel_type(self,value):
+        # noinspection PyUnresolvedReferences
+        valid_fuel_types = [choice[0] for choice in Vehicle.FuelTypeChoices.choices]
+        if value not in valid_fuel_types:
+            raise serializers.ValidationError(
+                'Fuel type must be one of the following: %s' % ', '.join(valid_fuel_types))
+        return value
+
+
+    def validate_branch(self,value):
+        if value is not None:
+            location=Location.objects.get(id=value)
+            if location and location.location_type!='B':
+                raise serializers.ValidationError('Vehicle can only be assigned to branch location.')

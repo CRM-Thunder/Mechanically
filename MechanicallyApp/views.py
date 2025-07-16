@@ -1,7 +1,5 @@
-from rest_framework.decorators import permission_classes
-
-from .models import Manufacturer, Location, UserLocationAssignment
-from .serializers import ManufacturerSerializer, LocationSerializer, UserNestedLocationAssignmentSerializer
+from .models import Manufacturer, Location, UserLocationAssignment, Vehicle
+from .serializers import ManufacturerSerializer, LocationSerializer, UserNestedLocationAssignmentSerializer, VehicleCreateUpdateSerializer, VehicleRetrieveSerializer, VehicleListSerializer
 from rest_framework import generics
 from .permissions import IsStandard, IsManager, IsAdmin, IsSuperUser, IsMechanic, DisableOPTIONSMethod
 from rest_framework.permissions import IsAuthenticated
@@ -72,3 +70,18 @@ class UserLocationListAPIView(generics.ListAPIView):
         elif self.request.method=='OPTIONS':
             self.permission_classes = [DisableOPTIONSMethod]
         return super().get_permissions()
+
+class VehicleListCreateAPIView(generics.ListCreateAPIView):
+    queryset = Vehicle.objects.all()
+    serializer_class = VehicleListSerializer
+    def get_serializer_class(self):
+        if self.request.method=='POST':
+            return VehicleCreateUpdateSerializer
+        return VehicleListSerializer
+
+class VehicleRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Vehicle.objects.all()
+    def get_serializer_class(self):
+        if self.request.method=='GET':
+            return VehicleRetrieveSerializer
+        return VehicleCreateUpdateSerializer

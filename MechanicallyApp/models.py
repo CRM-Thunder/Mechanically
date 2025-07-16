@@ -82,7 +82,7 @@ class Vehicle(models.Model):
     fuel_type=models.CharField(max_length=2, choices=FuelTypeChoices.choices, default=FuelTypeChoices.OTHER)
     # noinspection PyUnresolvedReferences
     availability=models.CharField(max_length=1, choices=AvailabilityChoices.choices, default=AvailabilityChoices.AVAILABLE)
-    #musi być zabezpieczenie że może być przypisany tylko do brancha, na poziomie Serializera lub stworzyć własny trigger
+    #musi być zabezpieczenie, że może być przypisany tylko do brancha, na poziomie Serializera lub stworzyć własny trigger
     branch=models.ForeignKey('Location',on_delete=models.SET_NULL, related_name='vehicles', null=True, blank=True)
 
 

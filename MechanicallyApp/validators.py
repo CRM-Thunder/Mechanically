@@ -32,3 +32,7 @@ def vehicle_year_validator(vehicle_year):
     current_year=date.today().year
     if vehicle_year < 1900 or vehicle_year > current_year:
         raise serializers.ValidationError('Vehicle production year must be between 1900 and current year.')
+
+def vehicle_model_validator(vehicle_model):
+    if not re.match(r'^[A-Za-z0-9-]+(?: [A-Za-z0-9-]+)*$', vehicle_model):
+        raise serializers.ValidationError('Vehicle model may contain letters, numbers,hyphens and only one space between characters.')
