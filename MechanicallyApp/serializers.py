@@ -85,6 +85,7 @@ class UserLocationAssignmentSerializer(serializers.ModelSerializer):
 
 #serializer służący do wypisywania, dodawania oraz aktualizowania Location
 class LocationSerializer(serializers.ModelSerializer):
+    location_type=serializers.CharField(max_length=1)
     class Meta:
         model = Location
         fields = '__all__'

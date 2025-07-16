@@ -9,7 +9,7 @@ https://docs.djangoproject.com/en/5.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
-
+from datetime import timedelta
 from pathlib import Path
 import environ
 import os
@@ -128,13 +128,18 @@ USE_TZ = True
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 AUTH_USER_MODEL = 'MechanicallyApp.User'
-#po wprowadzeniu uwierzytelniania i autoryzacji wprowadzić: 'MechanicallyApp.permissions.IsAdmin' jako DEFAULT_PERMISSION_CLASSES
+#po wprowadzeniu uwierzytelniania i autoryzacji wprowadzić: 'MechanicallyApp.permissions.IsSuperUser' jako DEFAULT_PERMISSION_CLASSES
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
 
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.AllowAny',
+        'rest_framework.permissions.IsAuthenticated',
     ]
+}
+
+#ustawienie tylko do testow
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=360)
 }

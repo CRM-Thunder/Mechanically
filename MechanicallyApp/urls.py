@@ -9,5 +9,5 @@ urlpatterns = [
     path('manufacturers/<uuid:pk>/',views.ManufacturerRetrieveUpdateDestroyAPIView.as_view(), name='manufacturer-detail'),
     path('locations/',views.LocationListCreateAPIView.as_view(), name='location-list'),
     path('locations/<uuid:pk>/',views.LocationRetrieveUpdateDestroyAPIView.as_view(), name='location-detail'),
-    path('my-location/',views.UserLocationRetrieveAPIView.as_view(), name='assigned-location'),
+    path('my-location/',views.UserLocationListAPIView.as_view(), name='assigned-location'),
 ]
