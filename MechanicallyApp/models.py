@@ -33,6 +33,21 @@ class User(AbstractUser):
     def get_short_name(self):
         return self.first_name
 
+class Location(models.Model):
+    class LocationTypeChoices(models.TextChoices):
+        BRANCH='B'
+        WORKSHOP='W'
+
+    name = models.CharField(max_length=100, unique=True, validators=[MinLengthValidator(3)])
+    phone_number = models.CharField(max_length=9, unique=True, validators=[MinLengthValidator(9)])
+    email = models.EmailField()
+    id=models.UUIDField(primary_key=True,default=uuid.uuid4,editable=False)
+    #narazie jako pojedyncze pole, w razie czego można rozbudować
+    address=models.CharField(max_length=50)
+    # noinspection PyUnresolvedReferences
+    location_type=models.CharField(max_length=1,choices=LocationTypeChoices.choices)
+
+
 #dodać walidator dla formatu VIN
 class Vehicle(models.Model):
 
@@ -73,7 +88,7 @@ class Vehicle(models.Model):
     id=models.UUIDField(primary_key=True,default=uuid.uuid4,editable=False)
     vin=models.CharField(max_length=17,unique=True, validators=[MinLengthValidator(17)])
     kilometers=models.PositiveIntegerField()
-    manufacturer=models.ForeignKey('Manufacturer',on_delete=models.CASCADE, related_name='vehicles')
+    manufacturer=models.ForeignKey('Manufacturer',on_delete=models.PROTECT, related_name='vehicles')
     vehicle_model=models.CharField(max_length=20)
     year=models.PositiveIntegerField()
     # noinspection PyUnresolvedReferences
@@ -83,7 +98,7 @@ class Vehicle(models.Model):
     # noinspection PyUnresolvedReferences
     availability=models.CharField(max_length=1, choices=AvailabilityChoices.choices, default=AvailabilityChoices.AVAILABLE)
     #musi być zabezpieczenie, że może być przypisany tylko do brancha, na poziomie Serializera lub stworzyć własny trigger
-    branch=models.ForeignKey('Location',on_delete=models.SET_NULL, related_name='vehicles', null=True, blank=True)
+    location=models.ForeignKey('Location',on_delete=models.SET_NULL, related_name='vehicles', null=True, blank=True)
 
 
 class Manufacturer(models.Model):
@@ -93,25 +108,13 @@ class Manufacturer(models.Model):
         return self.name
 
 
-class Location(models.Model):
-    class LocationTypeChoices(models.TextChoices):
-        BRANCH='B'
-        WORKSHOP='W'
 
-    name = models.CharField(max_length=100, unique=True, validators=[MinLengthValidator(3)])
-    phone_number = models.CharField(max_length=9, unique=True, validators=[MinLengthValidator(9)])
-    email = models.EmailField()
-    id=models.UUIDField(primary_key=True,default=uuid.uuid4,editable=False)
-    #narazie jako pojedyncze pole, w razie czego można rozbudować
-    address=models.CharField(max_length=50)
-    # noinspection PyUnresolvedReferences
-    location_type=models.CharField(max_length=1,choices=LocationTypeChoices.choices)
 
 #należy wprowadzić zabezpieczenie, że do warsztatu może zostać przydzielony tylko mechanik, a do brancha tylko standardowy pracownik
 class UserLocationAssignment(models.Model):
     id=models.UUIDField(primary_key=True,default=uuid.uuid4,editable=False)
-    user=models.OneToOneField(User,on_delete=models.CASCADE, related_name='user_location_assignment')
-    location=models.ForeignKey(Location,on_delete=models.CASCADE, related_name='user_location_assignment')
+    user=models.OneToOneField('User',on_delete=models.CASCADE, related_name='user_location_assignment')
+    location=models.ForeignKey('Location',on_delete=models.CASCADE, related_name='user_location_assignment')
     assign_date=models.DateTimeField(auto_now_add=True)
 
 class FailureReport(models.Model):
@@ -121,12 +124,12 @@ class FailureReport(models.Model):
         DISMISSED='D'
         RESOLVED='R'
     id=models.UUIDField(primary_key=True,default=uuid.uuid4,editable=False)
-    vehicle=models.ForeignKey(Vehicle,on_delete=models.CASCADE, related_name='failure_reports')
+    vehicle=models.ForeignKey('Vehicle',on_delete=models.CASCADE, related_name='failure_reports')
     description=models.TextField()
     workshop=models.ForeignKey('Location',on_delete=models.SET_NULL, null=True, blank=True, related_name='failure_reports')
     report_date=models.DateTimeField(auto_now_add=True)
     #zabezpieczyć aby tylko standardowy/menadżer mógł być autorem
-    report_author=models.ForeignKey(User,on_delete=models.SET_NULL, related_name='failure_reports',null=True)
+    report_author=models.ForeignKey('User',on_delete=models.SET_NULL, related_name='failure_reports',null=True)
     # noinspection PyUnresolvedReferences
     status=models.CharField(max_length=1,choices=FailureStatusChoices.choices,default=FailureStatusChoices.PENDING)
     last_status_change_date=models.DateTimeField(auto_now=True)
@@ -137,7 +140,7 @@ class RepairReport(models.Model):
         READY='R'
         HISTORIC='H'
     id=models.UUIDField(primary_key=True,default=uuid.uuid4,editable=False)
-    failure_report=models.OneToOneField(FailureReport,on_delete=models.CASCADE, related_name='repair_report')
+    failure_report=models.OneToOneField('FailureReport',on_delete=models.CASCADE, related_name='repair_report')
     condition_analysis=models.TextField()
     repair_action=models.TextField()
     cost=models.DecimalField(max_digits=8,decimal_places=2)

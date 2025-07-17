@@ -11,7 +11,7 @@ class UserLocationAssignmentForUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserLocationAssignment
         fields = ['location','assign_date']
-        read_only_fields = '__all__'
+        read_only_fields = ['location','assign_date']
 
 
 
@@ -117,7 +117,7 @@ class UserNestedLocationAssignmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserLocationAssignment
         fields = ['location','assign_date']
-        read_only_fields = '__all__'
+        read_only_fields = ['location','assign_date']
 
 #serializer do wypisywania wszystkich informacji o pojeździe
 class VehicleRetrieveSerializer(serializers.ModelSerializer):
@@ -126,23 +126,22 @@ class VehicleRetrieveSerializer(serializers.ModelSerializer):
     class Meta:
         model=Vehicle
         fields='__all__'
-        read_only_fields='__all__'
+        read_only_fields=['id','vin','kilometers','manufacturer','vehicle_model','year','vehicle_type','fuel_type','availability','branch']
 
 #serializer do listowania informacji o pojeździe
 class VehicleListSerializer(serializers.ModelSerializer):
     class Meta:
         model=Vehicle
-        fields=['id','manufacturer','vehicle_model','year','branch']
-        read_only_fields='__all__'
+        fields=['id','manufacturer','vehicle_model','year','location']
+        read_only_fields=['id','manufacturer','vehicle_model','year','location']
 
 #serializer do dodawania i aktualizacji pojazdu
 class VehicleCreateUpdateSerializer(serializers.ModelSerializer):
     vehicle_type = serializers.CharField(max_length=2)
     fuel_type = serializers.CharField(max_length=2)
-    availability = serializers.CharField(max_length=1)
     class Meta:
         model = Vehicle
-        fields = ['id','vin','kilometers','manufacturer','vehicle_model','year','vehicle_type','fuel_type','branch']
+        fields = ['id','vin','kilometers','manufacturer','vehicle_model','year','vehicle_type','fuel_type','location']
         read_only_fields = ['id']
 
     def validate_vin(self,value):
@@ -173,8 +172,7 @@ class VehicleCreateUpdateSerializer(serializers.ModelSerializer):
         return value
 
 
-    def validate_branch(self,value):
-        if value is not None:
-            location=Location.objects.get(id=value)
-            if location and location.location_type!='B':
-                raise serializers.ValidationError('Vehicle can only be assigned to branch location.')
+    def validate_location(self,value):
+        if value.location_type!='B':
+            raise serializers.ValidationError('Vehicle can only be assigned to branch location.')
+        return value
