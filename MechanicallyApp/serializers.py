@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import Manufacturer, User, Location, UserLocationAssignment, Vehicle
+from .models import Manufacturer, User, Location, UserLocationAssignment, Vehicle, FailureReport
 from .validators import manufacturer_name_validator, first_name_validator, last_name_validator, phone_number_validator, location_name_validator, vin_validator, vehicle_model_validator, vehicle_year_validator
 from .generators import generate_username
 
@@ -15,6 +15,7 @@ class UserLocationAssignmentForUserSerializer(serializers.ModelSerializer):
 
 
 
+#TODO: Dokładnie zaprojektować serializery dla Usera, dla odpowiednich funkcjonalności i poziomów uprawnień
 #serializer do operacji na użytkownikach przez administratora oraz wyświetlania informacji o własnym koncie, w przyszłości utworzę serializer read_only bez username dla pozostałych
 class UserSerializer(serializers.ModelSerializer):
     user_location_assignment=UserLocationAssignmentForUserSerializer(read_only=True)
@@ -50,16 +51,15 @@ class UserSerializer(serializers.ModelSerializer):
             generated_username=generate_username(first_name, last_name)
         user=User.objects.create_user(username=generated_username, **validated_data)
         return user
-    #zrobić osobny serializer do update???
     def update(self, instance, validated_data):
-        instance.first_name=validated_data.get('first_name', instance.first_name)
-        instance.last_name=validated_data.get('last_name', instance.last_name)
-        instance.email=validated_data.get('email', instance.email)
         if instance.first_name != validated_data.get('first_name', instance.first_name) or instance.last_name != validated_data.get('last_name', instance.last_name):
             new_username=generate_username(instance.first_name, instance.last_name)
             while User.objects.filter(username=new_username).exists():
                 new_username=generate_username(instance.first_name, instance.last_name)
             instance.username=new_username
+        instance.first_name=validated_data.get('first_name', instance.first_name)
+        instance.last_name=validated_data.get('last_name', instance.last_name)
+        instance.email=validated_data.get('email', instance.email)
         instance.save()
         #należy zająć się rolą, aby mechanik/standard nie mógł zmienić roli jeśli ma LocationUserAssignment
         return instance
@@ -132,8 +132,8 @@ class VehicleRetrieveSerializer(serializers.ModelSerializer):
 class VehicleListSerializer(serializers.ModelSerializer):
     class Meta:
         model=Vehicle
-        fields=['id','manufacturer','vehicle_model','year','location']
-        read_only_fields=['id','manufacturer','vehicle_model','year','location']
+        fields=['id','manufacturer','vehicle_model','year','location','availability']
+        read_only_fields=['id','manufacturer','vehicle_model','year','location','availability']
 
 #serializer do dodawania i aktualizacji pojazdu
 class VehicleCreateUpdateSerializer(serializers.ModelSerializer):
@@ -141,7 +141,7 @@ class VehicleCreateUpdateSerializer(serializers.ModelSerializer):
     fuel_type = serializers.CharField(max_length=2)
     class Meta:
         model = Vehicle
-        fields = ['id','vin','kilometers','manufacturer','vehicle_model','year','vehicle_type','fuel_type','location']
+        fields = ['id','vin','kilometers','manufacturer','vehicle_model','year','vehicle_type','fuel_type','location','availability']
         read_only_fields = ['id']
 
     def validate_vin(self,value):
@@ -176,3 +176,29 @@ class VehicleCreateUpdateSerializer(serializers.ModelSerializer):
         if value.location_type!='B':
             raise serializers.ValidationError('Vehicle can only be assigned to branch location.')
         return value
+
+    def validate_availability(self,value):
+        # noinspection PyUnresolvedReferences
+        availability_choices = [choice[0] for choice in Vehicle.AvailabilityChoices.choices]
+        if value not in availability_choices:
+            raise serializers.ValidationError(
+                'Location type must be one of the following: %s' % ', '.join(availability_choices))
+        return value
+
+    #TODO:należy przetestować po zaimplementowaniu widoków z FailureReport
+    def update(self, instance, validated_data):
+        if FailureReport.objects.filter(vehicle_id=instance.id,status__in=['P','A']).exists() and validated_data.get('availability')=='A':
+            raise serializers.ValidationError('Vehicle has been reported as failure. It cannot be set as available.')
+        instance.vin=validated_data.get('vin', instance.vin)
+        instance.kilometers=validated_data.get('kilometers', instance.kilometers)
+        instance.manufacturer=validated_data.get('manufacturer', instance.manufacturer)
+        instance.vehicle_model=validated_data.get('vehicle_model', instance.vehicle_model)
+        instance.year=validated_data.get('year', instance.year)
+        instance.vehicle_type=validated_data.get('vehicle_type', instance.vehicle_type)
+        instance.fuel_type=validated_data.get('fuel_type', instance.fuel_type)
+        instance.location=validated_data.get('location', instance.location)
+        instance.availability=validated_data.get('availability', instance.availability)
+        instance.save()
+        return instance
+
+

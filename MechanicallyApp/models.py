@@ -10,9 +10,7 @@ class User(AbstractUser):
         ('admin','Administrator')
     )
     role=models.CharField(max_length=10,choices=ROLE_CHOICES,default='standard')
-    #odwzorować mechanizm tworzenia username jak na usosie, czyli 3 litery imienia 3 litery nazwiska i 4 cyfrowy kod, dodać do tego regex jak się uda zaimplementować
     id=models.UUIDField(primary_key=True,default=uuid.uuid4,editable=False)
-    #nie korzystam z tych pól, opieram się tylko o własne role, co ułatwia unifikację zarządzania uprawnieniami
     is_staff = models.BooleanField(default=False)
     is_superuser = models.BooleanField(default=False)
     username = models.CharField(max_length=10, unique=True,
@@ -48,7 +46,6 @@ class Location(models.Model):
     location_type=models.CharField(max_length=1,choices=LocationTypeChoices.choices)
 
 
-#dodać walidator dla formatu VIN
 class Vehicle(models.Model):
 
     class VehicleTypeChoices(models.TextChoices):
@@ -84,7 +81,6 @@ class Vehicle(models.Model):
     class AvailabilityChoices(models.TextChoices):
         AVAILABLE = 'A'
         UNAVAILABLE='U'
-        REPAIR = 'R'
     id=models.UUIDField(primary_key=True,default=uuid.uuid4,editable=False)
     vin=models.CharField(max_length=17,unique=True, validators=[MinLengthValidator(17)])
     kilometers=models.PositiveIntegerField()
@@ -110,7 +106,7 @@ class Manufacturer(models.Model):
 
 
 
-#należy wprowadzić zabezpieczenie, że do warsztatu może zostać przydzielony tylko mechanik, a do brancha tylko standardowy pracownik
+#TODO:należy wprowadzić zabezpieczenie, że do warsztatu może zostać przydzielony tylko mechanik, a do brancha tylko standardowy pracownik
 class UserLocationAssignment(models.Model):
     id=models.UUIDField(primary_key=True,default=uuid.uuid4,editable=False)
     user=models.OneToOneField('User',on_delete=models.CASCADE, related_name='user_location_assignment')

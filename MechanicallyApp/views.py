@@ -58,7 +58,7 @@ class LocationRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView
 
 #informacje o swojej lokalizacji może wypisywać standard i mechanik
 class UserLocationListAPIView(generics.ListAPIView):
-    queryset = UserLocationAssignment.objects
+    queryset = UserLocationAssignment.objects.all()
     serializer_class = UserNestedLocationAssignmentSerializer
     def get_queryset(self):
         qs=super().get_queryset()
@@ -71,17 +71,62 @@ class UserLocationListAPIView(generics.ListAPIView):
             self.permission_classes = [DisableOPTIONSMethod]
         return super().get_permissions()
 
+#ten widok umożliwia wypisywanie i tworzenie pojazdów przez menadżera oraz administratora
+#za pomocą odpowiednich query setów muszę zaimplementować wypisywanie pojazdów z siedziby standarda
+#a także wypisywanie pojazdów przez mechanika, dla których istnieje powiązanie FailureReport z jego warsztatem
 class VehicleListCreateAPIView(generics.ListCreateAPIView):
     queryset = Vehicle.objects.all()
     serializer_class = VehicleListSerializer
+
     def get_serializer_class(self):
         if self.request.method=='POST':
             return VehicleCreateUpdateSerializer
         return VehicleListSerializer
 
+    def get_permissions(self):
+        if self.request.method=='GET':
+            self.permission_classes=[IsAuthenticated]
+        elif self.request.method=='POST':
+            self.permission_classes=[IsManager|IsAdmin]
+        elif self.request.method=='OPTIONS':
+            self.permission_classes=[DisableOPTIONSMethod]
+        return super().get_permissions()
+
+    def get_queryset(self):
+        qs=super().get_queryset()
+        if self.request.method=='GET':
+            #TODO: zrobić testy poprawnego działania tej metody
+            if self.request.user.role=='standard':
+                standard_location=UserLocationAssignment.objects.get(user=self.request.user).location
+                return qs.filter(location=standard_location)
+            elif self.request.user.role=='mechanic':
+                mechanic_location=UserLocationAssignment.objects.get(user=self.request.user).location
+                return qs.filter(failure_reports__workshop=mechanic_location)
+        return qs
+
+#ten widok umożliwia menadżerowi oraz administratorowi odczytywanie, aktualizowanie oraz usuwanie pojazdu
 class VehicleRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Vehicle.objects.all()
     def get_serializer_class(self):
         if self.request.method=='GET':
             return VehicleRetrieveSerializer
         return VehicleCreateUpdateSerializer
+#TODO: Sprawdzić, czy w przypadku GET ustawiona jest domyślna IsAuthenticated z settings
+    def get_permissions(self):
+        if self.request.method=='PUT' or self.request.method=='PATCH' or self.request.method=='DELETE':
+            self.permission_classes=[IsManager|IsAdmin]
+        elif self.request.method=='OPTIONS':
+            self.permission_classes=[DisableOPTIONSMethod]
+        return super().get_permissions()
+
+    def get_queryset(self):
+        qs=super().get_queryset()
+        if self.request.method=='GET':
+            #TODO: zrobić testy poprawnego działania tej metody
+            if self.request.user.role=='standard':
+                standard_location=UserLocationAssignment.objects.get(user=self.request.user).location
+                return qs.filter(location=standard_location)
+            elif self.request.user.role=='mechanic':
+                mechanic_location=UserLocationAssignment.objects.get(user=self.request.user).location
+                return qs.filter(failure_reports__workshop=mechanic_location)
+        return qs
