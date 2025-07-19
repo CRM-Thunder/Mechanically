@@ -3,6 +3,7 @@ from rest_framework import serializers
 from .models import Manufacturer, User, Location, UserLocationAssignment, Vehicle, FailureReport
 from .validators import manufacturer_name_validator, first_name_validator, last_name_validator, phone_number_validator, location_name_validator, vin_validator, vehicle_model_validator, vehicle_year_validator
 from .generators import generate_username
+from .mail_services import send_activation_email
 
 
 
@@ -16,7 +17,6 @@ class UserLocationAssignmentForUserSerializer(serializers.ModelSerializer):
 
 
 #TODO: Dokładnie zaprojektować serializery dla Usera, dla odpowiednich funkcjonalności i poziomów uprawnień
-#serializer do operacji na użytkownikach przez administratora oraz wyświetlania informacji o własnym koncie, w przyszłości utworzę serializer read_only bez username dla pozostałych
 class UserSerializer(serializers.ModelSerializer):
     user_location_assignment=UserLocationAssignmentForUserSerializer(read_only=True)
     #zastanowić się nad osobnym serializerem read only, który by zawierał username, bo to info wrażliwe po części, a nie wszyscy muszą mieć do niego dostęp
@@ -63,6 +63,39 @@ class UserSerializer(serializers.ModelSerializer):
         instance.save()
         #należy zająć się rolą, aby mechanik/standard nie mógł zmienić roli jeśli ma LocationUserAssignment
         return instance
+
+class UserCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['first_name','last_name','email','phone_number', 'role']
+
+    def validate_first_name(self, value):
+        first_name_validator(value)
+        return value
+
+    def validate_last_name(self, value):
+        last_name_validator(value)
+        return value
+
+    def validate_phone_number(self,value):
+        phone_number_validator(value)
+        return value
+
+    def validate_role(self, value):
+        valid_roles = [choice[0] for choice in User.ROLE_CHOICES]
+        if value not in valid_roles:
+            raise serializers.ValidationError('Role must be one of the following: %s' % ', '.join(valid_roles))
+        return value
+
+    def create(self, validated_data):
+        first_name=validated_data.get('first_name')
+        last_name=validated_data.get('last_name')
+        generated_username=generate_username(first_name, last_name)
+        while User.objects.filter(username=generated_username).exists():
+            generated_username=generate_username(first_name, last_name)
+        user=User.objects.create_user(username=generated_username, is_active=False, **validated_data)
+        send_activation_email(user)
+        return user
 
 
 #serializer służący do wypisywania, dodawania oraz aktualizowania Manufacturer
