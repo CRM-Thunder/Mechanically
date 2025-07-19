@@ -9,11 +9,11 @@ class ManufacturerListCreateAPIView(generics.ListCreateAPIView):
     queryset = Manufacturer.objects.all()
     serializer_class = ManufacturerSerializer
     def get_permissions(self):
-        if self.request.method=='POST':
+        if self.request.method.lower()=='post':
             self.permission_classes=[IsAdmin]
-        elif self.request.method=='GET':
+        elif self.request.method.lower()=='get':
             self.permission_classes=[IsAuthenticated]
-        elif self.request.method=='OPTIONS':
+        elif self.request.method.lower()=='options':
             self.permission_classes=[DisableOPTIONSMethod]
         return super().get_permissions()
 
@@ -21,11 +21,11 @@ class ManufacturerRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPI
     queryset = Manufacturer.objects.all()
     serializer_class = ManufacturerSerializer
     def get_permissions(self):
-        if self.request.method=='GET':
+        if self.request.method.lower()=='get':
             self.permission_classes=[IsAuthenticated]
-        elif self.request.method=='PUT' or self.request.method=='PATCH' or self.request.method=='DELETE':
+        elif self.request.method.lower()=='put' or self.request.method.lower()=='patch' or self.request.method.lower()=='delete':
             self.permission_classes=[IsAdmin]
-        elif self.request.method=='OPTIONS':
+        elif self.request.method.lower()=='options':
             self.permission_classes=[DisableOPTIONSMethod]
         return super().get_permissions()
 
@@ -35,11 +35,11 @@ class LocationListCreateAPIView(generics.ListCreateAPIView):
     queryset = Location.objects.all()
     serializer_class = LocationSerializer
     def get_permissions(self):
-        if self.request.method=='GET':
+        if self.request.method.lower()=='get':
             self.permission_classes=[IsManager|IsAdmin]
-        elif self.request.method=='POST':
+        elif self.request.method.lower()=='post':
             self.permission_classes=[IsAdmin]
-        elif self.request.method=='OPTIONS':
+        elif self.request.method.lower()=='options':
             self.permission_classes=[DisableOPTIONSMethod]
         return super().get_permissions()
 
@@ -48,11 +48,11 @@ class LocationRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView
     queryset = Location.objects.all()
     serializer_class = LocationSerializer
     def get_permissions(self):
-        if self.request.method=='GET':
+        if self.request.method.lower()=='get':
             self.permission_classes=[IsManager|IsAdmin]
-        elif self.request.method=='PUT' or self.request.method=='PATCH' or self.request.method=='DELETE':
+        elif self.request.method.lower()=='put' or self.request.method.lower()=='patch' or self.request.method.lower()=='delete':
             self.permission_classes=[IsAdmin]
-        elif self.request.method=='OPTIONS':
+        elif self.request.method.lower()=='options':
             self.permission_classes=[DisableOPTIONSMethod]
         return super().get_permissions()
 
@@ -65,9 +65,9 @@ class UserLocationListAPIView(generics.ListAPIView):
         return qs.filter(user=self.request.user)
 
     def get_permissions(self):
-        if self.request.method=='GET':
+        if self.request.method.lower()=='get':
             self.permission_classes=[IsMechanic|IsStandard]
-        elif self.request.method=='OPTIONS':
+        elif self.request.method.lower()=='options':
             self.permission_classes = [DisableOPTIONSMethod]
         return super().get_permissions()
 
@@ -79,16 +79,16 @@ class VehicleListCreateAPIView(generics.ListCreateAPIView):
     serializer_class = VehicleListSerializer
 
     def get_serializer_class(self):
-        if self.request.method=='POST':
+        if self.request.method.lower()=='post':
             return VehicleCreateUpdateSerializer
         return VehicleListSerializer
 
     def get_permissions(self):
-        if self.request.method=='GET':
+        if self.request.method.lower()=='get':
             self.permission_classes=[IsAuthenticated]
-        elif self.request.method=='POST':
+        elif self.request.method.lower()=='post':
             self.permission_classes=[IsManager|IsAdmin]
-        elif self.request.method=='OPTIONS':
+        elif self.request.method.lower()=='options':
             self.permission_classes=[DisableOPTIONSMethod]
         return super().get_permissions()
 
@@ -108,20 +108,20 @@ class VehicleListCreateAPIView(generics.ListCreateAPIView):
 class VehicleRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Vehicle.objects.all()
     def get_serializer_class(self):
-        if self.request.method=='GET':
+        if self.request.method.lower()=='get':
             return VehicleRetrieveSerializer
         return VehicleCreateUpdateSerializer
 #TODO: Sprawdzić, czy w przypadku GET ustawiona jest domyślna IsAuthenticated z settings
     def get_permissions(self):
-        if self.request.method=='PUT' or self.request.method=='PATCH' or self.request.method=='DELETE':
+        if self.request.method.lower()=='put' or self.request.method.lower()=='patch' or self.request.method.lower()=='delete':
             self.permission_classes=[IsManager|IsAdmin]
-        elif self.request.method=='OPTIONS':
+        elif self.request.method.lower()=='options':
             self.permission_classes=[DisableOPTIONSMethod]
         return super().get_permissions()
 
     def get_queryset(self):
         qs=super().get_queryset()
-        if self.request.method=='GET':
+        if self.request.method.lower()=='get':
             #TODO: zrobić testy poprawnego działania tej metody
             if self.request.user.role=='standard':
                 standard_location=UserLocationAssignment.objects.get(user=self.request.user).location

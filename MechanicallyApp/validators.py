@@ -25,8 +25,8 @@ def manufacturer_name_validator(manufacturer_name):
         raise serializers.ValidationError('Manufacturer name must consist of capital letters only and only one space between words.')
 
 def location_name_validator(location_name):
-    if not re.match(r'^[A-Z]*$', location_name):
-        raise serializers.ValidationError('Location name must consist of capital letters only ')
+    if not re.match(r'^[A-Z]+(?: [A-Z]+)*$', location_name):
+        raise serializers.ValidationError('Location name must consist of capital letters only and only one space between words. ')
 
 def vehicle_year_validator(vehicle_year):
     current_year=date.today().year
@@ -34,5 +34,5 @@ def vehicle_year_validator(vehicle_year):
         raise serializers.ValidationError('Vehicle production year must be between 1900 and current year.')
 
 def vehicle_model_validator(vehicle_model):
-    if not re.match(r'^[A-Za-z0-9-]+(?: [A-Za-z0-9-]+)*$', vehicle_model):
+    if not re.match(r'^[A-Za-z0-9][A-Za-z0-9-]*(?: [A-Za-z0-9-]+)*$', vehicle_model):
         raise serializers.ValidationError('Vehicle model may contain letters, numbers,hyphens and only one space between characters.')
