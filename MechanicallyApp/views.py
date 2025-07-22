@@ -1,8 +1,12 @@
+from rest_framework.response import Response
 from .models import Manufacturer, Location, UserLocationAssignment, Vehicle
-from .serializers import ManufacturerSerializer, LocationSerializer, UserNestedLocationAssignmentSerializer, VehicleCreateUpdateSerializer, VehicleRetrieveSerializer, VehicleListSerializer
-from rest_framework import generics
+from .serializers import ManufacturerSerializer, LocationSerializer, UserNestedLocationAssignmentSerializer, \
+    VehicleCreateUpdateSerializer, VehicleRetrieveSerializer, VehicleListSerializer, AccountActivationSerializer
+from rest_framework import generics, status
+from rest_framework.views import APIView
 from .permissions import IsStandard, IsManager, IsAdmin, IsSuperUser, IsMechanic, DisableOPTIONSMethod
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
+
 
 #dodawać i edytować Manufacturera może administrator, reszta może wypisywać
 class ManufacturerListCreateAPIView(generics.ListCreateAPIView):
@@ -130,3 +134,13 @@ class VehicleRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView)
                 mechanic_location=UserLocationAssignment.objects.get(user=self.request.user).location
                 return qs.filter(failure_reports__workshop=mechanic_location)
         return qs
+
+#TODO: przetestować poprawność działania
+class AccountActivationAPIView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self,request):
+        serializer = AccountActivationSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_200_OK)

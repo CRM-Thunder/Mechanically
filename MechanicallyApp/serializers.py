@@ -1,5 +1,8 @@
+from django.contrib.auth.tokens import default_token_generator
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
-
+from rest_framework.generics import get_object_or_404
 from .models import Manufacturer, User, Location, UserLocationAssignment, Vehicle, FailureReport
 from .validators import manufacturer_name_validator, first_name_validator, last_name_validator, phone_number_validator, location_name_validator, vin_validator, vehicle_model_validator, vehicle_year_validator
 from .generators import generate_username
@@ -94,7 +97,8 @@ class UserCreateSerializer(serializers.ModelSerializer):
         while User.objects.filter(username=generated_username).exists():
             generated_username=generate_username(first_name, last_name)
         user=User.objects.create_user(username=generated_username, is_active=False, **validated_data)
-        send_activation_email(user)
+        token = default_token_generator.make_token(user)
+        send_activation_email(user, token=token)
         return user
 
 
@@ -233,5 +237,44 @@ class VehicleCreateUpdateSerializer(serializers.ModelSerializer):
         instance.availability=validated_data.get('availability', instance.availability)
         instance.save()
         return instance
+
+class AccountActivationSerializer(serializers.Serializer):
+    id=serializers.UUIDField()
+    token = serializers.CharField(max_length=100)
+    password = serializers.CharField(max_length=128)
+    confirm_password=serializers.CharField(max_length=128)
+
+    def validate(self, data):
+        user_id = data['id']
+        user=get_object_or_404(User, id=user_id, is_active=False)
+        token = data['token']
+        password = data['password']
+        confirm_password = data['confirm_password']
+        if not default_token_generator.check_token(user, token):
+            raise serializers.ValidationError('Invalid token.')
+
+        try:
+            validate_password(password, user)
+        except DjangoValidationError as err:
+            raise serializers.ValidationError({'passwords':err.messages})
+
+        if password != confirm_password:
+            raise serializers.ValidationError('Passwords do not match.')
+
+        return data
+
+    def save(self):
+        user_id = self.validated_data['id']
+        user=get_object_or_404(User, id=user_id, is_active=False)
+        user.set_password(self.validated_data['password'])
+        user.is_active=True
+        user.save()
+        return "Account has been activated."
+
+
+
+
+
+
 
 

@@ -12,4 +12,5 @@ urlpatterns = [
     path('my-location/',views.UserLocationListAPIView.as_view(), name='assigned-location'),
     path('vehicles/',views.VehicleListCreateAPIView.as_view(), name='vehicle-list'),
     path('vehicles/<uuid:pk>/',views.VehicleRetrieveUpdateDestroyAPIView.as_view(), name='vehicle-detail'),
+    path('account/activate/', views.AccountActivationAPIView.as_view(), name='account-activation'),
 ]

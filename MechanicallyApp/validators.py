@@ -1,6 +1,8 @@
 from datetime import date
 import re
 from rest_framework import serializers
+from django.core.exceptions import ValidationError as DjangoValidationError
+
 
 def first_name_validator(first_name):
     if not re.match(r'^[A-Z][a-z]*$', first_name):
@@ -36,3 +38,12 @@ def vehicle_year_validator(vehicle_year):
 def vehicle_model_validator(vehicle_model):
     if not re.match(r'^[A-Za-z0-9][A-Za-z0-9-]*(?: [A-Za-z0-9-]+)*$', vehicle_model):
         raise serializers.ValidationError('Vehicle model may contain letters, numbers,hyphens and only one space between characters.')
+
+
+class MaximumLengthValidator:
+    def __init__(self, max_length=256):
+        self.max_length = max_length
+
+    def validate(self, password):
+        if len(password) > self.max_length:
+           raise DjangoValidationError('Password must be less than 256 characters.', code='password_to_long', params={'max_length': self.max_length})
