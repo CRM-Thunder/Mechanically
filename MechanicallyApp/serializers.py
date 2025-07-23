@@ -3,6 +3,7 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 from rest_framework.generics import get_object_or_404
+from rest_framework.exceptions import PermissionDenied
 from .models import Manufacturer, User, Location, UserLocationAssignment, Vehicle, FailureReport
 from .validators import manufacturer_name_validator, first_name_validator, last_name_validator, phone_number_validator, location_name_validator, vin_validator, vehicle_model_validator, vehicle_year_validator
 from .generators import generate_username, generate_random_password
@@ -68,6 +69,7 @@ class UserSerializer(serializers.ModelSerializer):
         return instance
 
 class UserCreateSerializer(serializers.ModelSerializer):
+    role=serializers.CharField(max_length=8)
     class Meta:
         model = User
         fields = ['first_name','last_name','email','phone_number', 'role']
@@ -86,12 +88,17 @@ class UserCreateSerializer(serializers.ModelSerializer):
 
     def validate_role(self, value):
         is_superuser=self.context.get('is_superuser',False)
+        roles = [choice[0] for choice in User.ROLE_CHOICES]
         if is_superuser:
-            valid_roles = [choice[0] for choice in User.ROLE_CHOICES]
+            valid_roles=roles
         else:
             valid_roles=('standard','manager','mechanic')
+
         if value not in valid_roles:
-            raise serializers.ValidationError('Role must be one of the following: %s' % ', '.join(valid_roles))
+            if value not in roles:
+                raise serializers.ValidationError('Role must be one of the following: %s' % ', '.join(valid_roles))
+            else:
+                raise PermissionDenied("You do not have permission to perform this action.")
         return value
 
     def create(self, validated_data):
@@ -101,10 +108,11 @@ class UserCreateSerializer(serializers.ModelSerializer):
         while User.objects.filter(username=generated_username).exists():
             generated_username=generate_username(first_name, last_name)
         generated_password=generate_random_password()
-        while not validate_password(generated_password):
+        while validate_password(generated_password) is not None:
             generated_password=generate_random_password()
         user=User.objects.create_user(username=generated_username, password=generated_password, is_active=False, **validated_data)
         token = default_token_generator.make_token(user)
+        #TODO: przejść na asynchroniczne wysyłanie maila
         send_activation_email(user, token=token)
         return user
 
@@ -277,11 +285,3 @@ class AccountActivationSerializer(serializers.Serializer):
         user.is_active=True
         user.save()
         return "Account has been activated."
-
-
-
-
-
-
-
-

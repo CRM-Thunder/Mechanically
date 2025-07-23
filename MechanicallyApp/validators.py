@@ -3,15 +3,15 @@ import re
 from rest_framework import serializers
 from django.core.exceptions import ValidationError as DjangoValidationError
 
-
+#TODO: dopracować walidatory aby obsługiwały znaki diakrytyczne
 def first_name_validator(first_name):
-    if not re.match(r'^[A-Z][a-z]*$', first_name):
-        raise serializers.ValidationError('First name must start with capital letter.')
+    if not re.match('^[A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]*$', first_name):
+        raise serializers.ValidationError('First name must start with capital letter and contain only letters.')
 
 
 def last_name_validator(last_name):
-    if not re.match(r'^[A-Z][a-z]*$', last_name):
-        raise serializers.ValidationError('Last name must start with capital letter.')
+    if not re.match('^[A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]*$', last_name):
+        raise serializers.ValidationError('Last name must start with capital letter and contain only letters.')
 
 
 def vin_validator(vin):
@@ -44,6 +44,6 @@ class MaximumLengthValidator:
     def __init__(self, max_length=256):
         self.max_length = max_length
 
-    def validate(self, password):
+    def validate(self, password, user=None):
         if len(password) > self.max_length:
            raise DjangoValidationError('Password must be less than 256 characters.', code='password_to_long', params={'max_length': self.max_length})

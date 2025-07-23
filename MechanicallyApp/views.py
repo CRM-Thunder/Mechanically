@@ -135,6 +135,7 @@ class VehicleRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView)
                 return qs.filter(failure_reports__workshop=mechanic_location)
         return qs
 
+#jest to widok służący do aktywacji konta oraz zmiany hasła z domyślnego na wybrane przez usera
 #TODO: przetestować poprawność działania
 class AccountActivationAPIView(APIView):
     permission_classes = [AllowAny]
@@ -142,10 +143,11 @@ class AccountActivationAPIView(APIView):
     def post(self,request):
         serializer = AccountActivationSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        result=serializer.save()
+        return Response({'result':result}, status=status.HTTP_200_OK)
 
 
+#Jest to widok służący do utworzenia konta użytkownika. W zależności, czy użytkownik wysyłający request jest adminem czy superuserem, może on przydzielić inne role
 #TODO: przetestować poprawność działania wraz z procesem aktywacji konta
 class UserCreateAPIView(generics.CreateAPIView):
     queryset = User.objects.all()
