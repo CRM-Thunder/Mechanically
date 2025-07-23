@@ -36,3 +36,9 @@ class DisableOPTIONSMethod(BasePermission):
         if request.method=='OPTIONS':
             return False
         return True
+
+class IsAccountOwner(BasePermission):
+    def has_permission(self, request, view):
+        return request.user.is_authenticated
+    def has_object_permission(self, request, view, obj):
+        return obj == request.user

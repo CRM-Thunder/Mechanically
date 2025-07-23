@@ -1,7 +1,7 @@
 from rest_framework.response import Response
-from .models import Manufacturer, Location, UserLocationAssignment, Vehicle
+from .models import Manufacturer, Location, UserLocationAssignment, Vehicle, User
 from .serializers import ManufacturerSerializer, LocationSerializer, UserNestedLocationAssignmentSerializer, \
-    VehicleCreateUpdateSerializer, VehicleRetrieveSerializer, VehicleListSerializer, AccountActivationSerializer
+    VehicleCreateUpdateSerializer, VehicleRetrieveSerializer, VehicleListSerializer, AccountActivationSerializer, UserCreateSerializer
 from rest_framework import generics, status
 from rest_framework.views import APIView
 from .permissions import IsStandard, IsManager, IsAdmin, IsSuperUser, IsMechanic, DisableOPTIONSMethod
@@ -144,3 +144,16 @@ class AccountActivationAPIView(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+#TODO: przetestować poprawność działania wraz z procesem aktywacji konta
+class UserCreateAPIView(generics.CreateAPIView):
+    queryset = User.objects.all()
+    serializer_class = UserCreateSerializer
+    permission_classes = [IsAdmin]
+    def get_serializer_context(self):
+        context=super().get_serializer_context()
+        context['is_superuser']=self.request.user.is_superuser
+        return context
+
+

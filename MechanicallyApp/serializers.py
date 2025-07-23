@@ -5,7 +5,7 @@ from rest_framework import serializers
 from rest_framework.generics import get_object_or_404
 from .models import Manufacturer, User, Location, UserLocationAssignment, Vehicle, FailureReport
 from .validators import manufacturer_name_validator, first_name_validator, last_name_validator, phone_number_validator, location_name_validator, vin_validator, vehicle_model_validator, vehicle_year_validator
-from .generators import generate_username
+from .generators import generate_username, generate_random_password
 from .mail_services import send_activation_email
 
 
@@ -85,7 +85,11 @@ class UserCreateSerializer(serializers.ModelSerializer):
         return value
 
     def validate_role(self, value):
-        valid_roles = [choice[0] for choice in User.ROLE_CHOICES]
+        is_superuser=self.context.get('is_superuser',False)
+        if is_superuser:
+            valid_roles = [choice[0] for choice in User.ROLE_CHOICES]
+        else:
+            valid_roles=('standard','manager','mechanic')
         if value not in valid_roles:
             raise serializers.ValidationError('Role must be one of the following: %s' % ', '.join(valid_roles))
         return value
@@ -96,7 +100,10 @@ class UserCreateSerializer(serializers.ModelSerializer):
         generated_username=generate_username(first_name, last_name)
         while User.objects.filter(username=generated_username).exists():
             generated_username=generate_username(first_name, last_name)
-        user=User.objects.create_user(username=generated_username, is_active=False, **validated_data)
+        generated_password=generate_random_password()
+        while not validate_password(generated_password):
+            generated_password=generate_random_password()
+        user=User.objects.create_user(username=generated_username, password=generated_password, is_active=False, **validated_data)
         token = default_token_generator.make_token(user)
         send_activation_email(user, token=token)
         return user
