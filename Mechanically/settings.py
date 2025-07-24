@@ -137,7 +137,6 @@ USE_TZ = True
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 AUTH_USER_MODEL = 'MechanicallyApp.User'
-#po wprowadzeniu uwierzytelniania i autoryzacji wprowadzić: 'MechanicallyApp.permissions.IsSuperUser' jako DEFAULT_PERMISSION_CLASSES
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
 

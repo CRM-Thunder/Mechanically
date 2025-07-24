@@ -99,10 +99,10 @@ class VehicleListCreateAPIView(generics.ListCreateAPIView):
     def get_queryset(self):
         qs=super().get_queryset()
         if self.request.method=='GET':
-            #TODO: zrobić testy poprawnego działania tej metody
             if self.request.user.role=='standard':
                 standard_location=UserLocationAssignment.objects.get(user=self.request.user).location
                 return qs.filter(location=standard_location)
+            # TODO: zrobić test poprawnego działania w przypadku mechanika
             elif self.request.user.role=='mechanic':
                 mechanic_location=UserLocationAssignment.objects.get(user=self.request.user).location
                 return qs.filter(failure_reports__workshop=mechanic_location)
@@ -115,7 +115,7 @@ class VehicleRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView)
         if self.request.method.lower()=='get':
             return VehicleRetrieveSerializer
         return VehicleCreateUpdateSerializer
-#TODO: Sprawdzić, czy w przypadku GET ustawiona jest domyślna IsAuthenticated z settings
+
     def get_permissions(self):
         if self.request.method.lower()=='put' or self.request.method.lower()=='patch' or self.request.method.lower()=='delete':
             self.permission_classes=[IsManager|IsAdmin]
@@ -126,7 +126,6 @@ class VehicleRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView)
     def get_queryset(self):
         qs=super().get_queryset()
         if self.request.method.lower()=='get':
-            #TODO: zrobić testy poprawnego działania tej metody
             if self.request.user.role=='standard':
                 standard_location=UserLocationAssignment.objects.get(user=self.request.user).location
                 return qs.filter(location=standard_location)
