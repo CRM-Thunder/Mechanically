@@ -7,7 +7,7 @@ from rest_framework.exceptions import PermissionDenied
 from .models import Manufacturer, User, Location, UserLocationAssignment, Vehicle, FailureReport
 from .validators import manufacturer_name_validator, first_name_validator, last_name_validator, phone_number_validator, location_name_validator, vin_validator, vehicle_model_validator, vehicle_year_validator
 from .generators import generate_username, generate_random_password
-from .mail_services import send_activation_email
+from .mail_services import send_activation_email, send_reset_password_email
 
 
 
@@ -114,7 +114,14 @@ class UserCreateSerializer(serializers.ModelSerializer):
         token = default_token_generator.make_token(user)
         #TODO: przejść na asynchroniczne wysyłanie maila
         send_activation_email(user, token=token)
+        #TODO: sprawdzić czy zwracany jest również id, bo musi być
         return user
+
+class UserListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id','first_name','last_name','email','phone_number', 'role']
+        read_only_fields = ['id','first_name','last_name','email','phone_number', 'role']
 
 
 #serializer służący do wypisywania, dodawania oraz aktualizowania Manufacturer
@@ -285,3 +292,48 @@ class AccountActivationSerializer(serializers.Serializer):
         user.is_active=True
         user.save()
         return "Account has been activated."
+
+class ResetPasswordRequestSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+    def save(self):
+        email = self.validated_data['email']
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return "If an account with provided email exists, password reset link has been sent to provided email address."
+        token = default_token_generator.make_token(user)
+        send_reset_password_email(user, token=token)
+        return "If an account with provided email exists, password reset link has been sent to provided email address."
+
+class ResetPasswordSerializer(serializers.Serializer):
+    id = serializers.UUIDField()
+    token = serializers.CharField(max_length=100)
+    password = serializers.CharField(max_length=128)
+    confirm_password = serializers.CharField(max_length=128)
+
+    def validate(self, data):
+        user_id = data['id']
+        user = get_object_or_404(User, id=user_id, is_active=False)
+        token = data['token']
+        password = data['password']
+        confirm_password = data['confirm_password']
+        if not default_token_generator.check_token(user, token):
+            raise serializers.ValidationError('Invalid token.')
+
+        try:
+            validate_password(password, user)
+        except DjangoValidationError as err:
+            raise serializers.ValidationError({'passwords': err.messages})
+
+        if password != confirm_password:
+            raise serializers.ValidationError('Passwords do not match.')
+
+        return data
+
+    def save(self):
+        user_id = self.validated_data['id']
+        user = get_object_or_404(User, id=user_id, is_active=False)
+        user.set_password(self.validated_data['password'])
+        user.save()
+        return "Password has been successfully changed. You can now login with your new credentials."

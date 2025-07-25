@@ -1,11 +1,12 @@
 from rest_framework.response import Response
 from .models import Manufacturer, Location, UserLocationAssignment, Vehicle, User
 from .serializers import ManufacturerSerializer, LocationSerializer, UserNestedLocationAssignmentSerializer, \
-    VehicleCreateUpdateSerializer, VehicleRetrieveSerializer, VehicleListSerializer, AccountActivationSerializer, UserCreateSerializer
+VehicleCreateUpdateSerializer, VehicleRetrieveSerializer, VehicleListSerializer, AccountActivationSerializer, \
+UserCreateSerializer, UserListSerializer, ResetPasswordSerializer, ResetPasswordRequestSerializer
 from rest_framework import generics, status
 from rest_framework.views import APIView
 from .permissions import IsStandard, IsManager, IsAdmin, IsSuperUser, IsMechanic, DisableOPTIONSMethod
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.permissions import IsAuthenticated
 
 
 #dodawać i edytować Manufacturera może administrator, reszta może wypisywać
@@ -137,10 +138,30 @@ class VehicleRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView)
 #jest to widok służący do aktywacji konta oraz zmiany hasła z domyślnego na wybrane przez usera
 #TODO: przetestować poprawność działania
 class AccountActivationAPIView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [~IsAuthenticated]
 
     def post(self,request):
         serializer = AccountActivationSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        result=serializer.save()
+        return Response({'result':result}, status=status.HTTP_200_OK)
+
+#widok służący do wysyłania email w związku z żądaniem resetu hasła
+class ResetPasswordRequestAPIView(APIView):
+    permission_classes = [~IsAuthenticated]
+
+    def post(self,request):
+        serializer=ResetPasswordRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        result=serializer.save()
+        return Response({'result':result}, status=status.HTTP_200_OK)
+
+#widok służący do resetowania hasła
+class ResetPasswordAPIView(APIView):
+    permission_classes = [~IsAuthenticated]
+
+    def post(self,request):
+        serializer=ResetPasswordSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         result=serializer.save()
         return Response({'result':result}, status=status.HTTP_200_OK)
@@ -156,5 +177,25 @@ class UserCreateAPIView(generics.CreateAPIView):
         context=super().get_serializer_context()
         context['is_superuser']=self.request.user.is_superuser
         return context
+    def get_permissions(self):
+        if self.request.method.lower()=='options':
+            self.permission_classes=[DisableOPTIONSMethod]
+        return super().get_permissions()
+
+#TODO: należy wytestować poprawne wybieranie querysetów po zaimplementowaniu przypisania użytkownika do lokacji
+class UserListAPIView(generics.ListAPIView):
+    queryset = User.objects.all()
+    serializer_class = UserListSerializer
+    permission_classes = [IsAuthenticated]
+    def get_permissions(self):
+        if self.request.method.lower() == 'options':
+            self.permission_classes = [DisableOPTIONSMethod]
+        return super().get_permissions()
+    def get_queryset(self):
+        qs = super().get_queryset()
+        if self.request.user.role=='standard' or self.request.user.role=='mechanic':
+            return qs.filter(user_location_assignment__location=UserLocationAssignment.objects.get(user=self.request.user).location)
+        return qs
+
 
 
