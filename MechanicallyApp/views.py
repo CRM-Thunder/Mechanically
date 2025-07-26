@@ -167,35 +167,41 @@ class ResetPasswordAPIView(APIView):
         return Response({'result':result}, status=status.HTTP_200_OK)
 
 
-#Jest to widok służący do utworzenia konta użytkownika. W zależności, czy użytkownik wysyłający request jest adminem czy superuserem, może on przydzielić inne role
-#TODO: przetestować poprawność działania wraz z procesem aktywacji konta
-class UserCreateAPIView(generics.CreateAPIView):
+#Jest to widok służący do utworzenia konta użytkownika oraz ich wylistowania. Zakres użytkowników oraz uprawnienia różnią się w zależności od roli użytkownika
+#TODO: należy wytestować poprawne wybieranie querysetów
+class UserListCreateAPIView(generics.ListCreateAPIView):
     queryset = User.objects.all()
-    serializer_class = UserCreateSerializer
-    permission_classes = [IsAdmin]
+    permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        if self.request.method.lower()=='get':
+            self.permission_classes=[IsAuthenticated]
+        elif self.request.method.lower()=='post':
+            self.permission_classes=[IsAdmin]
+        elif self.request.method.lower() == 'options':
+            self.permission_classes = [DisableOPTIONSMethod]
+        return super().get_permissions()
+
+    def get_serializer_class(self):
+        if self.request.method.lower()=='get':
+            return UserListSerializer
+        return UserCreateSerializer
+
     def get_serializer_context(self):
         context=super().get_serializer_context()
         context['is_superuser']=self.request.user.is_superuser
         return context
-    def get_permissions(self):
-        if self.request.method.lower()=='options':
-            self.permission_classes=[DisableOPTIONSMethod]
-        return super().get_permissions()
-
-#TODO: należy wytestować poprawne wybieranie querysetów po zaimplementowaniu przypisania użytkownika do lokacji
-class UserListAPIView(generics.ListAPIView):
-    queryset = User.objects.all()
-    serializer_class = UserListSerializer
-    permission_classes = [IsAuthenticated]
-    def get_permissions(self):
-        if self.request.method.lower() == 'options':
-            self.permission_classes = [DisableOPTIONSMethod]
-        return super().get_permissions()
+#mechanik oraz standard mogą wypisać współpracowników z lokacji, menadżer może wyświetlać standardy, mechaników i menadżerów, admin może wypisywać wszystkich poza superuserem, superuser wszystkich
     def get_queryset(self):
         qs = super().get_queryset()
-        if self.request.user.role=='standard' or self.request.user.role=='mechanic':
-            return qs.filter(user_location_assignment__location=UserLocationAssignment.objects.get(user=self.request.user).location)
+        if self.request.method.lower()=='get':
+            if self.request.user.role=='standard' or self.request.user.role=='mechanic':
+                if UserLocationAssignment.objects.filter(user=self.request.user).exists():
+                    return qs.filter(user_location_assignment__location=UserLocationAssignment.objects.get(user=self.request.user).location)
+                else:
+                    return qs.filter(id=self.request.user.id)
+            elif self.request.user.role=='manager':
+                return qs.exclude(role='admin')
+            elif self.request.user.role=='admin' and self.request.user.is_superuser==False:
+                return qs.exclude(is_superuser=True)
         return qs
-
-
-

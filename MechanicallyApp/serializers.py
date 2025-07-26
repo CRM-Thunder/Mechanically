@@ -18,56 +18,7 @@ class UserLocationAssignmentForUserSerializer(serializers.ModelSerializer):
         fields = ['location','assign_date']
         read_only_fields = ['location','assign_date']
 
-
-
-#TODO: Dokładnie zaprojektować serializery dla Usera, dla odpowiednich funkcjonalności i poziomów uprawnień
-class UserSerializer(serializers.ModelSerializer):
-    user_location_assignment=UserLocationAssignmentForUserSerializer(read_only=True)
-    #zastanowić się nad osobnym serializerem read only, który by zawierał username, bo to info wrażliwe po części, a nie wszyscy muszą mieć do niego dostęp
-    class Meta:
-        model = User
-        fields = ['id','username','first_name','last_name','email','phone_number', 'role', 'user_location_assignment']
-        read_only_fields = ['id','username','user_location_assignment']
-
-    def validate_first_name(self, value):
-        first_name_validator(value)
-        return value
-
-    def validate_last_name(self, value):
-        last_name_validator(value)
-        return value
-
-    def validate_phone_number(self,value):
-        phone_number_validator(value)
-        return value
-
-    def validate_role(self, value):
-        valid_roles = [choice[0] for choice in User.ROLE_CHOICES]
-        if value not in valid_roles:
-            raise serializers.ValidationError('Role must be one of the following: %s' % ', '.join(valid_roles))
-        return value
-
-    def create(self, validated_data):
-        first_name=validated_data.get('first_name')
-        last_name=validated_data.get('last_name')
-        generated_username=generate_username(first_name, last_name)
-        while User.objects.filter(username=generated_username).exists():
-            generated_username=generate_username(first_name, last_name)
-        user=User.objects.create_user(username=generated_username, **validated_data)
-        return user
-    def update(self, instance, validated_data):
-        if instance.first_name != validated_data.get('first_name', instance.first_name) or instance.last_name != validated_data.get('last_name', instance.last_name):
-            new_username=generate_username(instance.first_name, instance.last_name)
-            while User.objects.filter(username=new_username).exists():
-                new_username=generate_username(instance.first_name, instance.last_name)
-            instance.username=new_username
-        instance.first_name=validated_data.get('first_name', instance.first_name)
-        instance.last_name=validated_data.get('last_name', instance.last_name)
-        instance.email=validated_data.get('email', instance.email)
-        instance.save()
-        #należy zająć się rolą, aby mechanik/standard nie mógł zmienić roli jeśli ma LocationUserAssignment
-        return instance
-
+#serializer służący do tworzenia użytkownika
 class UserCreateSerializer(serializers.ModelSerializer):
     role=serializers.CharField(max_length=8)
     class Meta:
@@ -122,6 +73,48 @@ class UserListSerializer(serializers.ModelSerializer):
         model = User
         fields = ['id','first_name','last_name','email','phone_number', 'role']
         read_only_fields = ['id','first_name','last_name','email','phone_number', 'role']
+
+class UserUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['first_name','last_name','email','phone_number', 'role']
+
+    def validate_first_name(self, value):
+        first_name_validator(value)
+        return value
+
+    def validate_last_name(self, value):
+        last_name_validator(value)
+        return value
+
+    def validate_phone_number(self,value):
+        phone_number_validator(value)
+        return value
+
+    def validate_role(self,value):
+        valid_roles = ('standard', 'manager', 'mechanic')
+        if value not in valid_roles:
+            raise PermissionDenied("You do not have permission to perform this action.")
+        return value
+
+    def update(self, instance, validated_data):
+        is_superuser = self.context.get('is_superuser', False)
+        if is_superuser==False and instance.role=='admin':
+            raise PermissionDenied("You do not have permission to perform this action.")
+        if instance.role!=validated_data.get('role', instance.role) and UserLocationAssignment.objects.filter(user=instance).exists():
+            raise serializers.ValidationError('Users with assigned locations cannot be changed to other roles. Please unassign user from location first.')
+        if instance.first_name != validated_data.get('first_name', instance.first_name) or instance.last_name != validated_data.get('last_name', instance.last_name):
+            new_username=generate_username(instance.first_name, instance.last_name)
+            while User.objects.filter(username=new_username).exists():
+                new_username=generate_username(instance.first_name, instance.last_name)
+            instance.username=new_username
+        instance.first_name=validated_data.get('first_name', instance.first_name)
+        instance.last_name=validated_data.get('last_name', instance.last_name)
+        instance.email=validated_data.get('email', instance.email)
+        instance.phone_number=validated_data.get('phone_number', instance.phone_number)
+        instance.role=validated_data.get('role', instance.role)
+        instance.save()
+        return instance
 
 
 #serializer służący do wypisywania, dodawania oraz aktualizowania Manufacturer
