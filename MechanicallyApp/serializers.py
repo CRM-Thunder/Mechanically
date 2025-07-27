@@ -103,6 +103,9 @@ class UserUpdateSerializer(serializers.ModelSerializer):
             raise PermissionDenied("You do not have permission to perform this action.")
         if instance.role!=validated_data.get('role', instance.role) and UserLocationAssignment.objects.filter(user=instance).exists():
             raise serializers.ValidationError('Users with assigned locations cannot be changed to other roles. Please unassign user from location first.')
+        #paskudny kod XDDD
+        if instance.role=='admin' and validated_data.get('role', instance.role)!=instance.role:
+            raise serializers.ValidationError('Admin users cannot be changed to other roles.')
         if instance.first_name != validated_data.get('first_name', instance.first_name) or instance.last_name != validated_data.get('last_name', instance.last_name):
             new_username=generate_username(instance.first_name, instance.last_name)
             while User.objects.filter(username=new_username).exists():

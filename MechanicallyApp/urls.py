@@ -14,4 +14,5 @@ urlpatterns = [
     path('vehicles/<uuid:pk>/',views.VehicleRetrieveUpdateDestroyAPIView.as_view(), name='vehicle-detail'),
     path('users/activate/', views.AccountActivationAPIView.as_view(), name='user-activation'),
     path('users/', views.UserListCreateAPIView.as_view(), name='user-list'),
+    path('users/<uuid:pk>/', views.UserRetrieveUpdateDestroyAPIView.as_view(), name='user-detail')
 ]

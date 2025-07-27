@@ -2,7 +2,7 @@ from rest_framework.response import Response
 from .models import Manufacturer, Location, UserLocationAssignment, Vehicle, User
 from .serializers import ManufacturerSerializer, LocationSerializer, UserNestedLocationAssignmentSerializer, \
 VehicleCreateUpdateSerializer, VehicleRetrieveSerializer, VehicleListSerializer, AccountActivationSerializer, \
-UserCreateSerializer, UserListSerializer, ResetPasswordSerializer, ResetPasswordRequestSerializer
+UserCreateSerializer, UserListSerializer,UserUpdateSerializer, ResetPasswordSerializer, ResetPasswordRequestSerializer
 from rest_framework import generics, status
 from rest_framework.views import APIView
 from .permissions import IsStandard, IsManager, IsAdmin, IsSuperUser, IsMechanic, DisableOPTIONSMethod
@@ -203,5 +203,41 @@ class UserListCreateAPIView(generics.ListCreateAPIView):
             elif self.request.user.role=='manager':
                 return qs.exclude(role='admin')
             elif self.request.user.role=='admin' and self.request.user.is_superuser==False:
+                return qs.exclude(is_superuser=True)
+        return qs
+#narazie wdrażany jest update
+#TODO: wytestować update
+class UserRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = User.objects.all()
+    permission_classes = [IsAuthenticated]
+
+    def get_serializer_class(self):
+        if self.request.method.lower()=='put' or self.request.method.lower()=='patch' or self.request.method.lower()=='delete':
+            return UserUpdateSerializer
+        return UserListSerializer
+
+    def get_permissions(self):
+        if self.request.method.lower()=='get':
+            self.permission_classes=[IsAuthenticated]
+        elif self.request.method.lower() in ['put','patch','delete']:
+            self.permission_classes=[IsAdmin]
+        elif self.request.method.lower()=='options':
+            self.permission_classes=[DisableOPTIONSMethod]
+        return super().get_permissions()
+#admini mogą wyświetlać wszystkich userów poza superuserem, ale kiedy wchodzą metody update/delete, nie mogą oni modyfikować innych adminów
+    def get_queryset(self):
+        qs = super().get_queryset()
+        if self.request.user.role == 'standard' or self.request.user.role == 'mechanic':
+            if UserLocationAssignment.objects.filter(user=self.request.user).exists():
+                return qs.filter(user_location_assignment__location=UserLocationAssignment.objects.get(
+                    user=self.request.user).location)
+            else:
+                return qs.filter(pk=self.request.user.pk)
+        elif self.request.user.role == 'manager':
+            return qs.exclude(role='admin')
+        elif self.request.user.role == 'admin' and self.request.user.is_superuser == False:
+            if self.request.method.lower() in ['put', 'patch', 'delete']:
+                return qs.exclude(role='admin')
+            else:
                 return qs.exclude(is_superuser=True)
         return qs
