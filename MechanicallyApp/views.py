@@ -2,10 +2,11 @@ from rest_framework.response import Response
 from .models import Manufacturer, Location, UserLocationAssignment, Vehicle, User
 from .serializers import ManufacturerSerializer, LocationSerializer, UserNestedLocationAssignmentSerializer, \
 VehicleCreateUpdateSerializer, VehicleRetrieveSerializer, VehicleListSerializer, AccountActivationSerializer, \
-UserCreateSerializer, UserListSerializer,UserUpdateSerializer, ResetPasswordSerializer, ResetPasswordRequestSerializer
+UserCreateSerializer, UserListSerializer,UserUpdateSerializer, ResetPasswordSerializer, ResetPasswordRequestSerializer, \
+UserRetrieveSerializer
 from rest_framework import generics, status
 from rest_framework.views import APIView
-from .permissions import IsStandard, IsManager, IsAdmin, IsSuperUser, IsMechanic, DisableOPTIONSMethod
+from .permissions import IsStandard, IsManager, IsAdmin, IsSuperUser, IsMechanic, DisableOPTIONSMethod, IsAdminOrSuperuserAndTargetUserHasLowerRole
 from rest_framework.permissions import IsAuthenticated
 
 
@@ -199,7 +200,7 @@ class UserListCreateAPIView(generics.ListCreateAPIView):
                 if UserLocationAssignment.objects.filter(user=self.request.user).exists():
                     return qs.filter(user_location_assignment__location=UserLocationAssignment.objects.get(user=self.request.user).location)
                 else:
-                    return qs.filter(id=self.request.user.id)
+                    return qs.filter(pk=self.request.user.pk)
             elif self.request.user.role=='manager':
                 return qs.exclude(role='admin')
             elif self.request.user.role=='admin' and self.request.user.is_superuser==False:
@@ -214,30 +215,33 @@ class UserRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
     def get_serializer_class(self):
         if self.request.method.lower()=='put' or self.request.method.lower()=='patch' or self.request.method.lower()=='delete':
             return UserUpdateSerializer
-        return UserListSerializer
+        return UserRetrieveSerializer
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
 
     def get_permissions(self):
         if self.request.method.lower()=='get':
             self.permission_classes=[IsAuthenticated]
         elif self.request.method.lower() in ['put','patch','delete']:
-            self.permission_classes=[IsAdmin]
+            self.permission_classes=[IsAdminOrSuperuserAndTargetUserHasLowerRole]
         elif self.request.method.lower()=='options':
             self.permission_classes=[DisableOPTIONSMethod]
         return super().get_permissions()
-#admini mogą wyświetlać wszystkich userów poza superuserem, ale kiedy wchodzą metody update/delete, nie mogą oni modyfikować innych adminów
+
     def get_queryset(self):
         qs = super().get_queryset()
-        if self.request.user.role == 'standard' or self.request.user.role == 'mechanic':
-            if UserLocationAssignment.objects.filter(user=self.request.user).exists():
-                return qs.filter(user_location_assignment__location=UserLocationAssignment.objects.get(
-                    user=self.request.user).location)
-            else:
-                return qs.filter(pk=self.request.user.pk)
-        elif self.request.user.role == 'manager':
-            return qs.exclude(role='admin')
-        elif self.request.user.role == 'admin' and self.request.user.is_superuser == False:
-            if self.request.method.lower() in ['put', 'patch', 'delete']:
+        if self.request.method.lower()=='get':
+            if self.request.user.role == 'standard' or self.request.user.role == 'mechanic':
+                if UserLocationAssignment.objects.filter(user=self.request.user).exists():
+                    return qs.filter(user_location_assignment__location=UserLocationAssignment.objects.get(
+                        user=self.request.user).location)
+                else:
+                    return qs.filter(pk=self.request.user.pk)
+            elif self.request.user.role == 'manager':
                 return qs.exclude(role='admin')
-            else:
+            elif self.request.user.role == 'admin' and self.request.user.is_superuser == False:
                 return qs.exclude(is_superuser=True)
         return qs

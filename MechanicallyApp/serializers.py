@@ -23,7 +23,8 @@ class UserCreateSerializer(serializers.ModelSerializer):
     role=serializers.CharField(max_length=8)
     class Meta:
         model = User
-        fields = ['first_name','last_name','email','phone_number', 'role']
+        fields = ['id','first_name','last_name','email','phone_number', 'role']
+        read_only_fields = ['id']
 
     def validate_first_name(self, value):
         first_name_validator(value)
@@ -98,14 +99,10 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         return value
 
     def update(self, instance, validated_data):
-        is_superuser = self.context.get('is_superuser', False)
-        if is_superuser==False and instance.role=='admin':
-            raise PermissionDenied("You do not have permission to perform this action.")
-        if instance.role!=validated_data.get('role', instance.role) and UserLocationAssignment.objects.filter(user=instance).exists():
-            raise serializers.ValidationError('Users with assigned locations cannot be changed to other roles. Please unassign user from location first.')
-        #paskudny kod XDDD
         if instance.role=='admin' and validated_data.get('role', instance.role)!=instance.role:
             raise serializers.ValidationError('Admin users cannot be changed to other roles.')
+        if instance.role!=validated_data.get('role', instance.role) and UserLocationAssignment.objects.filter(user=instance).exists():
+            raise serializers.ValidationError('Users with assigned locations cannot be changed to other roles. Please unassign user from location first.')
         if instance.first_name != validated_data.get('first_name', instance.first_name) or instance.last_name != validated_data.get('last_name', instance.last_name):
             new_username=generate_username(instance.first_name, instance.last_name)
             while User.objects.filter(username=new_username).exists():
@@ -119,6 +116,24 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         instance.save()
         return instance
 
+class UserRetrieveSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id','username','first_name','last_name','email','phone_number', 'role', 'is_superuser','is_active','date_joined']
+        read_only_fields = ['id','username','first_name','last_name','email','phone_number', 'role', 'is_superuser','is_active','date_joined']
+
+    def get_fields(self):
+        request=self.context.get('request')
+        fields=super().get_fields()
+        if self.instance.role in ['standard','mechanic']:
+            fields['user_location_assignment']=UserLocationAssignmentForUserSerializer(read_only=True)
+        #TODO: ewentualnie zamienić na dodawanie pól, trzeba sprawdzić jak podawać źródło danych dla nich
+        if not request.user.is_superuser:
+            fields.pop('is_superuser')
+            fields.pop('is_active')
+            fields.pop('username')
+            fields.pop('date_joined')
+        return fields
 
 #serializer służący do wypisywania, dodawania oraz aktualizowania Manufacturer
 class ManufacturerSerializer(serializers.ModelSerializer):

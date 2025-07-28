@@ -6,6 +6,20 @@ class IsAdmin(BasePermission):
             return True
         return False
 
+class IsAdminOrSuperuserAndTargetUserHasLowerRole(BasePermission):
+    def has_permission(self, request, view):
+        if request.user.is_authenticated and request.user.role == 'admin':
+            return True
+        return False
+    def has_object_permission(self, request, view, obj):
+        if request.user.is_superuser:
+            valid_roles=('standard','mechanic','manager','admin')
+        else:
+            valid_roles=('standard','mechanic','manager')
+        if obj.role in valid_roles:
+            return True
+        return False
+
 class IsSuperUser(BasePermission):
     def has_permission(self, request, view):
         if request.user.is_authenticated and request.user.role == 'admin' and request.user.is_superuser:
