@@ -29,7 +29,7 @@ class ManufacturerRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPI
     def get_permissions(self):
         if self.request.method.lower()=='get':
             self.permission_classes=[IsAuthenticated]
-        elif self.request.method.lower()=='put' or self.request.method.lower()=='patch' or self.request.method.lower()=='delete':
+        elif self.request.method.lower() in ('put','patch','delete'):
             self.permission_classes=[IsAdmin]
         elif self.request.method.lower()=='options':
             self.permission_classes=[DisableOPTIONSMethod]
@@ -56,7 +56,7 @@ class LocationRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView
     def get_permissions(self):
         if self.request.method.lower()=='get':
             self.permission_classes=[IsManager|IsAdmin]
-        elif self.request.method.lower()=='put' or self.request.method.lower()=='patch' or self.request.method.lower()=='delete':
+        elif self.request.method.lower() in ('put','patch','delete'):
             self.permission_classes=[IsAdmin]
         elif self.request.method.lower()=='options':
             self.permission_classes=[DisableOPTIONSMethod]
@@ -119,7 +119,7 @@ class VehicleRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView)
         return VehicleCreateUpdateSerializer
 
     def get_permissions(self):
-        if self.request.method.lower()=='put' or self.request.method.lower()=='patch' or self.request.method.lower()=='delete':
+        if self.request.method.lower() in ('put','patch','delete'):
             self.permission_classes=[IsManager|IsAdmin]
         elif self.request.method.lower()=='options':
             self.permission_classes=[DisableOPTIONSMethod]
@@ -147,6 +147,7 @@ class AccountActivationAPIView(APIView):
         result=serializer.save()
         return Response({'result':result}, status=status.HTTP_200_OK)
 
+#TODO: przetestować workflow resetu hasła
 #widok służący do wysyłania email w związku z żądaniem resetu hasła
 class ResetPasswordRequestAPIView(APIView):
     permission_classes = [~IsAuthenticated]
@@ -206,14 +207,14 @@ class UserListCreateAPIView(generics.ListCreateAPIView):
             elif self.request.user.role=='admin' and self.request.user.is_superuser==False:
                 return qs.exclude(is_superuser=True)
         return qs
-#narazie wdrażany jest update
+
 #TODO: wytestować update
 class UserRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
     queryset = User.objects.all()
     permission_classes = [IsAuthenticated]
 
     def get_serializer_class(self):
-        if self.request.method.lower()=='put' or self.request.method.lower()=='patch' or self.request.method.lower()=='delete':
+        if self.request.method.lower() in ('put','patch','delete'):
             return UserUpdateSerializer
         return UserRetrieveSerializer
 
@@ -225,7 +226,7 @@ class UserRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
     def get_permissions(self):
         if self.request.method.lower()=='get':
             self.permission_classes=[IsAuthenticated]
-        elif self.request.method.lower() in ['put','patch','delete']:
+        elif self.request.method.lower() in ('put','patch','delete'):
             self.permission_classes=[IsAdminOrSuperuserAndTargetUserHasLowerRole]
         elif self.request.method.lower()=='options':
             self.permission_classes=[DisableOPTIONSMethod]

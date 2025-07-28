@@ -99,17 +99,22 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         return value
 
     def update(self, instance, validated_data):
-        if instance.role=='admin' and validated_data.get('role', instance.role)!=instance.role:
-            raise serializers.ValidationError('Admin users cannot be changed to other roles.')
-        if instance.role!=validated_data.get('role', instance.role) and UserLocationAssignment.objects.filter(user=instance).exists():
-            raise serializers.ValidationError('Users with assigned locations cannot be changed to other roles. Please unassign user from location first.')
+        if validated_data.get('role', instance.role)!=instance.role:
+            if instance.role=='admin':
+                raise serializers.ValidationError('Admin users cannot be changed to other roles.')
+
+            if UserLocationAssignment.objects.filter(user=instance).exists():
+                raise serializers.ValidationError('Users with assigned locations cannot be changed to other roles. Please unassign user from location first.')
+
         if instance.first_name != validated_data.get('first_name', instance.first_name) or instance.last_name != validated_data.get('last_name', instance.last_name):
+            instance.first_name = validated_data.get('first_name', instance.first_name)
+            instance.last_name = validated_data.get('last_name', instance.last_name)
             new_username=generate_username(instance.first_name, instance.last_name)
+
             while User.objects.filter(username=new_username).exists():
                 new_username=generate_username(instance.first_name, instance.last_name)
             instance.username=new_username
-        instance.first_name=validated_data.get('first_name', instance.first_name)
-        instance.last_name=validated_data.get('last_name', instance.last_name)
+
         instance.email=validated_data.get('email', instance.email)
         instance.phone_number=validated_data.get('phone_number', instance.phone_number)
         instance.role=validated_data.get('role', instance.role)
@@ -325,7 +330,7 @@ class ResetPasswordSerializer(serializers.Serializer):
 
     def validate(self, data):
         user_id = data['id']
-        user = get_object_or_404(User, id=user_id, is_active=False)
+        user = get_object_or_404(User, id=user_id, is_active=True)
         token = data['token']
         password = data['password']
         confirm_password = data['confirm_password']
@@ -344,7 +349,7 @@ class ResetPasswordSerializer(serializers.Serializer):
 
     def save(self):
         user_id = self.validated_data['id']
-        user = get_object_or_404(User, id=user_id, is_active=False)
+        user = get_object_or_404(User, id=user_id, is_active=True)
         user.set_password(self.validated_data['password'])
         user.save()
         return "Password has been successfully changed. You can now login with your new credentials."

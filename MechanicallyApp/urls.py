@@ -13,6 +13,8 @@ urlpatterns = [
     path('vehicles/',views.VehicleListCreateAPIView.as_view(), name='vehicle-list'),
     path('vehicles/<uuid:pk>/',views.VehicleRetrieveUpdateDestroyAPIView.as_view(), name='vehicle-detail'),
     path('users/activate/', views.AccountActivationAPIView.as_view(), name='user-activation'),
+    path('users/reset-password/', views.ResetPasswordAPIView.as_view(), name='user-reset-password'),
+    path('users/reset-password-request/', views.ResetPasswordRequestAPIView.as_view(), name='user-reset-password-request'),
     path('users/', views.UserListCreateAPIView.as_view(), name='user-list'),
     path('users/<uuid:pk>/', views.UserRetrieveUpdateDestroyAPIView.as_view(), name='user-detail')
 ]
