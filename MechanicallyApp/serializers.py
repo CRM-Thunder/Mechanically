@@ -94,7 +94,7 @@ class UserUpdateSerializer(serializers.ModelSerializer):
     def validate_role(self,value):
         valid_roles = ('standard', 'manager', 'mechanic')
         if value not in valid_roles:
-            raise PermissionDenied("You do not have permission to perform this action.")
+            raise serializers.ValidationError('Updated role must be one of the following: %s' % ', '.join(valid_roles))
         return value
 
     def update(self, instance, validated_data):

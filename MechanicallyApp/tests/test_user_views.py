@@ -388,3 +388,100 @@ class UserTestCase(TestCase):
         assert response.status_code==status.HTTP_400_BAD_REQUEST
         response=client.patch(reverse('user-detail',kwargs={'pk': mechanic.pk}),data={'role':'manager'})
         assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_admin_can_update_manager_role(self):
+        user = User.objects.get(username="piotes1111")
+        manager=User.objects.get(username="szycha1111")
+        client = APIClient()
+        client.force_authenticate(user)
+        response = client.patch(reverse('user-detail', kwargs={'pk': manager.pk}), data={'role': 'standard'})
+        assert response.status_code == status.HTTP_200_OK
+        manager = User.objects.get(username="szycha1111")
+        assert manager.role == "standard"
+
+    def test_admin_cannot_update_admin_user(self):
+        user = User.objects.get(username="piotes1111")
+        admin=User.objects.get(username="albent1111")
+        client = APIClient()
+        client.force_authenticate(user)
+        response = client.patch(reverse('user-detail', kwargs={'pk': admin.pk}), data={'first_name': 'Chuck'})
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_admin_cannot_promote_user_to_admin(self):
+        user = User.objects.get(username="piotes1111")
+        standard=User.objects.get(username="kamgro1111")
+        client = APIClient()
+        client.force_authenticate(user)
+        response = client.patch(reverse('user-detail', kwargs={'pk': standard.pk}), data={'role': 'admin'})
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_superuser_cannot_demote_admin_user(self):
+        user = User.objects.get(username="grzkow1111")
+        admin=User.objects.get(username="albent1111")
+        client = APIClient()
+        client.force_authenticate(user)
+        response = client.patch(reverse('user-detail', kwargs={'pk': admin.pk}), data={'role': 'standard'})
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_superuser_can_update_admin_user(self):
+        user = User.objects.get(username="grzkow1111")
+        admin=User.objects.get(username="albent1111")
+        client = APIClient()
+        client.force_authenticate(user)
+        response = client.patch(reverse('user-detail', kwargs={'pk': admin.pk}), data={'first_name': 'Chuck'})
+        assert response.status_code == status.HTTP_200_OK
+        admin_updated=User.objects.get(id=admin.id)
+        assert admin_updated.first_name=="Chuck"
+
+    def test_non_admin_users_cannot_delete_users(self):
+        standard=User.objects.get(username="jannow1111")
+        mechanic=User.objects.get(username="karnaw1111")
+        manager=User.objects.get(username="szycha1111")
+        target=User.objects.get(username="krzpaw1111")
+        client=APIClient()
+        client.force_authenticate(standard)
+        response=client.delete(reverse('user-detail',kwargs={'pk': target.pk}))
+        assert response.status_code==status.HTTP_403_FORBIDDEN
+        client=APIClient()
+        client.force_authenticate(mechanic)
+        response=client.delete(reverse('user-detail',kwargs={'pk': target.pk}))
+        assert response.status_code==status.HTTP_403_FORBIDDEN
+        client=APIClient()
+        client.force_authenticate(manager)
+        response=client.delete(reverse('user-detail',kwargs={'pk': target.pk}))
+        assert response.status_code==status.HTTP_403_FORBIDDEN
+
+    def test_admin_can_delete_lower_role_users(self):
+        user=User.objects.get(username="piotes1111")
+        standard=User.objects.get(username="jannow1111")
+        mechanic=User.objects.get(username="karnaw1111")
+        manager=User.objects.get(username="szycha1111")
+        client=APIClient()
+        client.force_authenticate(user)
+        response=client.delete(reverse('user-detail',kwargs={'pk': standard.pk}))
+        assert response.status_code==status.HTTP_204_NO_CONTENT
+        assert User.objects.filter(username="jannow1111").exists()==False
+        response=client.delete(reverse('user-detail',kwargs={'pk': mechanic.pk}))
+        assert response.status_code==status.HTTP_204_NO_CONTENT
+        assert User.objects.filter(username="karnaw1111").exists()==False
+        response=client.delete(reverse('user-detail',kwargs={'pk': manager.pk}))
+        assert response.status_code==status.HTTP_204_NO_CONTENT
+        assert User.objects.filter(username="szycha1111").exists()==False
+
+    def test_admin_cannot_delete_admin_user(self):
+        user=User.objects.get(username="piotes1111")
+        admin=User.objects.get(username="albent1111")
+        client=APIClient()
+        client.force_authenticate(user)
+        response=client.delete(reverse('user-detail',kwargs={'pk': admin.pk}))
+        assert response.status_code==status.HTTP_403_FORBIDDEN
+
+    def test_superuser_can_delete_admin_user(self):
+        user=User.objects.get(username="grzkow1111")
+        admin=User.objects.get(username="albent1111")
+        client=APIClient()
+        client.force_authenticate(user)
+        response=client.delete(reverse('user-detail',kwargs={'pk': admin.pk}))
+        assert response.status_code==status.HTTP_204_NO_CONTENT
+        assert User.objects.filter(username="albent1111").exists()==False
+

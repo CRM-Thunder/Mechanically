@@ -147,7 +147,7 @@ class AccountActivationAPIView(APIView):
         result=serializer.save()
         return Response({'result':result}, status=status.HTTP_200_OK)
 
-#TODO: przetestować workflow resetu hasła
+#TODO: przetestować workflow resetu hasła, w przyszłości dodać throttling aby uniknąć DoS
 #widok służący do wysyłania email w związku z żądaniem resetu hasła
 class ResetPasswordRequestAPIView(APIView):
     permission_classes = [~IsAuthenticated]
@@ -170,7 +170,6 @@ class ResetPasswordAPIView(APIView):
 
 
 #Jest to widok służący do utworzenia konta użytkownika oraz ich wylistowania. Zakres użytkowników oraz uprawnienia różnią się w zależności od roli użytkownika
-#TODO: należy wytestować poprawne wybieranie querysetów
 class UserListCreateAPIView(generics.ListCreateAPIView):
     queryset = User.objects.all()
     permission_classes = [IsAuthenticated]
@@ -208,7 +207,6 @@ class UserListCreateAPIView(generics.ListCreateAPIView):
                 return qs.exclude(is_superuser=True)
         return qs
 
-#TODO: wytestować update
 class UserRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
     queryset = User.objects.all()
     permission_classes = [IsAuthenticated]
