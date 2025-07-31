@@ -1,12 +1,13 @@
+from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 from .models import Manufacturer, Location, UserLocationAssignment, Vehicle, User
 from .serializers import ManufacturerSerializer, LocationSerializer, UserNestedLocationAssignmentSerializer, \
 VehicleCreateUpdateSerializer, VehicleRetrieveSerializer, VehicleListSerializer, AccountActivationSerializer, \
 UserCreateSerializer, UserListSerializer,UserUpdateSerializer, ResetPasswordSerializer, ResetPasswordRequestSerializer, \
-UserRetrieveSerializer
+UserRetrieveSerializer, UserLocationAssignmentSerializer
 from rest_framework import generics, status
 from rest_framework.views import APIView
-from .permissions import IsStandard, IsManager, IsAdmin, IsSuperUser, IsMechanic, DisableOPTIONSMethod, IsAdminOrSuperuserAndTargetUserHasLowerRole
+from .permissions import IsStandard, IsManager, IsAdmin, IsMechanic, DisableOPTIONSMethod, IsAdminOrSuperuserAndTargetUserHasLowerRole
 from rest_framework.permissions import IsAuthenticated
 
 
@@ -244,3 +245,27 @@ class UserRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
             elif self.request.user.role == 'admin' and self.request.user.is_superuser == False:
                 return qs.exclude(is_superuser=True)
         return qs
+
+class AssignUserToLocationAPIView(generics.CreateAPIView):
+    queryset = UserLocationAssignment.objects.all()
+    serializer_class = UserLocationAssignmentSerializer
+
+    def get_permissions(self):
+        if self.request.method.lower()=='post':
+            self.permission_classes=[IsManager|IsAdmin]
+        elif self.request.method.lower()=='options':
+            self.permission_classes=[DisableOPTIONSMethod]
+        return super().get_permissions()
+
+class UnassignUserFromLocationAPIView(APIView):
+    def delete(self,request,user_id):
+        obj=get_object_or_404(UserLocationAssignment,user_id=user_id)
+        obj.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    def get_permissions(self):
+        if self.request.method.lower()=='delete':
+            self.permission_classes=[IsManager|IsAdmin]
+        elif self.request.method.lower()=='options':
+            self.permission_classes=[DisableOPTIONSMethod]
+        return super().get_permissions()

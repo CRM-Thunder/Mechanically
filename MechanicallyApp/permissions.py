@@ -1,5 +1,6 @@
 from rest_framework.permissions import BasePermission
-
+from django.core.exceptions import ValidationError as DjangoValidationError
+from rest_framework.exceptions import MethodNotAllowed
 class IsAdmin(BasePermission):
     def has_permission(self, request, view):
         if request.user.is_authenticated and request.user.role == 'admin':
@@ -48,7 +49,7 @@ class DisableOPTIONSMethod(BasePermission):
     message="Method \"OPTIONS\" not allowed"
     def has_permission(self, request, view):
         if request.method=='OPTIONS':
-            return False
+            raise MethodNotAllowed(method='OPTIONS')
         return True
 
 class IsAccountOwner(BasePermission):

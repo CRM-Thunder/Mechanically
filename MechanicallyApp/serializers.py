@@ -4,15 +4,43 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 from rest_framework.generics import get_object_or_404
 from rest_framework.exceptions import PermissionDenied
+from rest_framework.validators import UniqueValidator
+
 from .models import Manufacturer, User, Location, UserLocationAssignment, Vehicle, FailureReport
 from .validators import manufacturer_name_validator, first_name_validator, last_name_validator, phone_number_validator, location_name_validator, vin_validator, vehicle_model_validator, vehicle_year_validator
 from .generators import generate_username, generate_random_password
 from .mail_services import send_activation_email, send_reset_password_email
 
+#serializer służący do wypisywania, dodawania oraz aktualizowania Location
+class LocationSerializer(serializers.ModelSerializer):
+    location_type=serializers.CharField(max_length=1)
+    class Meta:
+        model = Location
+        fields = '__all__'
+        read_only_fields = ['id']
+
+    def validate_name(self, value):
+        location_name_validator(value)
+        return value
+
+    def validate_phone_number(self,value):
+        phone_number_validator(value)
+        return value
+
+    def validate_location_type(self, value):
+        if self.instance and value!=self.instance.location_type:
+            raise serializers.ValidationError('Location type cannot be changed')
+        # noinspection PyUnresolvedReferences
+        valid_location_types = [choice[0] for choice in Location.LocationTypeChoices.choices]
+        if value not in valid_location_types:
+            raise serializers.ValidationError('Location type must be one of the following: %s' % ', '.join(valid_location_types))
+        return value
+
 
 
 #serializer służący do wyświetlania informacji o przydziale z poziomu UserSerializer
 class UserLocationAssignmentForUserSerializer(serializers.ModelSerializer):
+    location=LocationSerializer(read_only=True)
     class Meta:
         model = UserLocationAssignment
         fields = ['location','assign_date']
@@ -232,37 +260,33 @@ class ManufacturerSerializer(serializers.ModelSerializer):
 
 #serializer do przypisywania użytkownika do danej lokalizacji
 class UserLocationAssignmentSerializer(serializers.ModelSerializer):
+    user = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all(),
+        validators=[
+            UniqueValidator(
+                queryset=UserLocationAssignment.objects.all(),
+                message="This user is already assigned to a location."
+            )
+        ]
+    )
     class Meta:
         model = UserLocationAssignment
-        fields = ['id','user','location','assign_date']
-        read_only_fields = ['id','assign_date']
+        fields = ['user','location','assign_date']
+        read_only_fields = ['assign_date']
 
-#serializer służący do wypisywania, dodawania oraz aktualizowania Location
-class LocationSerializer(serializers.ModelSerializer):
-    location_type=serializers.CharField(max_length=1)
-    class Meta:
-        model = Location
-        fields = '__all__'
-        read_only_fields = ['id']
-
-    def validate_name(self, value):
-        location_name_validator(value)
+    def validate_user(self,value):
+        if value.role not in ('standard','mechanic'):
+            raise serializers.ValidationError('Only standard users and mechanic users can be assigned to locations.')
         return value
 
-    def validate_phone_number(self,value):
-        phone_number_validator(value)
-        return value
-
-    def validate_location_type(self, value):
-        if self.instance and value!=self.instance.location_type:
-            raise serializers.ValidationError('Location type cannot be changed')
-        # noinspection PyUnresolvedReferences
-        valid_location_types = [choice[0] for choice in Location.LocationTypeChoices.choices]
-        if value not in valid_location_types:
-            raise serializers.ValidationError('Location type must be one of the following: %s' % ', '.join(valid_location_types))
-        return value
-
-
+    def validate(self, data):
+        user = data['user']
+        location = data['location']
+        if user.role=='standard' and location.location_type!='B':
+            raise serializers.ValidationError('Standard users can be assigned to branch locations only.')
+        if user.role=='mechanic' and location.location_type!='W':
+            raise serializers.ValidationError('Mechanic users can be assigned to workshop locations only.')
+        return data
 
 #serializer służący do wypisania informacji o lokacji mechanika/standarda
 class UserNestedLocationAssignmentSerializer(serializers.ModelSerializer):
