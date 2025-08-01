@@ -5,7 +5,7 @@ from .serializers import ManufacturerSerializer, LocationSerializer, UserNestedL
 VehicleCreateUpdateSerializer, VehicleRetrieveSerializer, VehicleListSerializer, AccountActivationSerializer, \
 UserCreateSerializer, UserListSerializer,UserUpdateSerializer, ResetPasswordSerializer, ResetPasswordRequestSerializer, \
 UserRetrieveSerializer, UserLocationAssignmentSerializer, FailureReportCreateSerializer, FailureReportListSerializer, \
-FailureReportRetrieveSerializer
+FailureReportRetrieveSerializer, FailureReportAssignWorkshopSerializer
 from rest_framework import generics, status
 from rest_framework.views import APIView
 from .permissions import IsStandard, IsManager, IsAdmin, IsMechanic, DisableOPTIONSMethod, IsAdminOrSuperuserAndTargetUserHasLowerRole
@@ -300,3 +300,10 @@ class FailureReportRetrieveAPIView(generics.RetrieveAPIView):
         elif self.request.method.lower()=='options':
             self.permission_classes=[DisableOPTIONSMethod]
         return super().get_permissions()
+#TODO wytestować bo syfny kod
+class FailureReportAssignWorkshopAPIView(APIView):
+    def post(self, request):
+        serializer=FailureReportAssignWorkshopSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        result=serializer.save()
+        return Response({'result':result}, status=status.HTTP_200_OK)

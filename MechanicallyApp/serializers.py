@@ -422,3 +422,19 @@ class FailureReportRetrieveSerializer(serializers.ModelSerializer):
         model=FailureReport
         fields='__all__'
         read_only_fields=['id','title','vehicle','description','workshop','report_date','report_author','status','last_status_change_date']
+
+class FailureReportAssignWorkshopSerializer(serializers.Serializer):
+    failure_report=serializers.PrimaryKeyRelatedField(queryset=FailureReport.objects.filter(workshop=None),required=True)
+    workshop=serializers.PrimaryKeyRelatedField(queryset=Location.objects.filter(location_type='W'),required=True)
+
+    def validate_failure_report(self,value):
+        if value.status!='P':
+            raise serializers.ValidationError('Selected failure report is not in pending status.')
+
+    def save(self):
+        failure_report=self.validated_data['failure_report']
+        workshop=self.validated_data['workshop']
+        failure_report.workshop=workshop
+        failure_report.status='A'
+        failure_report.save()
+        return "Failure report has been successfully assigned to selected workshop."
