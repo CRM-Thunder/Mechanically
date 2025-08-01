@@ -3,7 +3,7 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 from rest_framework.generics import get_object_or_404
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import PermissionDenied, NotFound
 from rest_framework.validators import UniqueValidator
 
 from .models import Manufacturer, User, Location, UserLocationAssignment, Vehicle, FailureReport
@@ -97,10 +97,17 @@ class UserCreateSerializer(serializers.ModelSerializer):
         return user
 
 class UserListSerializer(serializers.ModelSerializer):
+    location=serializers.UUIDField(source='user_location_assignment.location.id', read_only=True)
     class Meta:
         model = User
-        fields = ['id','first_name','last_name','email','phone_number', 'role']
-        read_only_fields = ['id','first_name','last_name','email','phone_number', 'role']
+        fields = ['id','first_name','last_name','email','phone_number','role','location']
+        read_only_fields = ['id','first_name','last_name','email','phone_number', 'role','location']
+
+    def to_representation(self,instance):
+        rep=super().to_representation(instance)
+        if instance.role not in ('standard','mechanic'):
+            rep.pop('location')
+        return rep
 
 class UserUpdateSerializer(serializers.ModelSerializer):
     class Meta:
@@ -378,3 +385,40 @@ class VehicleCreateUpdateSerializer(serializers.ModelSerializer):
         instance.save()
         return instance
 
+class FailureReportCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model=FailureReport
+        fields=['vehicle','description']
+
+    def validate_vehicle(self,value):
+        author_branch=UserLocationAssignment.objects.get(user=self.context.get('request').user).location
+        if value.location!=author_branch:
+            raise NotFound('There is no vehicle with provided ID assigned to your branch.')
+        if FailureReport.objects.filter(vehicle_id=value.id,status__in=['P','A']).exists():
+            raise serializers.ValidationError('Vehicle is already reported as failure.')
+        return value
+
+    def create(self, validated_data):
+        vehicle=validated_data.get('vehicle')
+        vehicle.availability='U'
+        description=validated_data.get('description')
+        vehicle.save()
+        FailureReport.objects.create(vehicle=vehicle,description=description,status='P', report_author=self.context.get('request').user)
+        return "Report has been successfully created. Technical staff will take care of the vehicle as soon as possible."
+
+
+class FailureReportListSerializer(serializers.ModelSerializer):
+    vehicle=VehicleRetrieveSerializer(read_only=True)
+    class Meta:
+        model=FailureReport
+        fields=['id','title','vehicle','status','report_date']
+        read_only_fields=['id','title','vehicle','status','report_date']
+
+class FailureReportRetrieveSerializer(serializers.ModelSerializer):
+    vehicle=VehicleRetrieveSerializer(read_only=True)
+    report_author=UserRetrieveSerializer(read_only=True)
+    workshop=LocationSerializer(read_only=True)
+    class Meta:
+        model=FailureReport
+        fields='__all__'
+        read_only_fields=['id','title','vehicle','description','workshop','report_date','report_author','status','last_status_change_date']

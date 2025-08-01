@@ -1,10 +1,11 @@
 from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
-from .models import Manufacturer, Location, UserLocationAssignment, Vehicle, User
+from .models import Manufacturer, Location, UserLocationAssignment, Vehicle, User, FailureReport
 from .serializers import ManufacturerSerializer, LocationSerializer, UserNestedLocationAssignmentSerializer, \
 VehicleCreateUpdateSerializer, VehicleRetrieveSerializer, VehicleListSerializer, AccountActivationSerializer, \
 UserCreateSerializer, UserListSerializer,UserUpdateSerializer, ResetPasswordSerializer, ResetPasswordRequestSerializer, \
-UserRetrieveSerializer, UserLocationAssignmentSerializer
+UserRetrieveSerializer, UserLocationAssignmentSerializer, FailureReportCreateSerializer, FailureReportListSerializer, \
+FailureReportRetrieveSerializer
 from rest_framework import generics, status
 from rest_framework.views import APIView
 from .permissions import IsStandard, IsManager, IsAdmin, IsMechanic, DisableOPTIONSMethod, IsAdminOrSuperuserAndTargetUserHasLowerRole
@@ -105,7 +106,6 @@ class VehicleListCreateAPIView(generics.ListCreateAPIView):
             if self.request.user.role=='standard':
                 standard_location=UserLocationAssignment.objects.get(user=self.request.user).location
                 return qs.filter(location=standard_location)
-            # TODO: zrobić test poprawnego działania w przypadku mechanika
             elif self.request.user.role=='mechanic':
                 mechanic_location=UserLocationAssignment.objects.get(user=self.request.user).location
                 return qs.filter(failure_reports__workshop=mechanic_location)
@@ -265,6 +265,37 @@ class UnassignUserFromLocationAPIView(APIView):
 
     def get_permissions(self):
         if self.request.method.lower()=='delete':
+            self.permission_classes=[IsManager|IsAdmin]
+        elif self.request.method.lower()=='options':
+            self.permission_classes=[DisableOPTIONSMethod]
+        return super().get_permissions()
+
+class FailureReportListCreateAPIView(generics.ListCreateAPIView):
+    queryset = FailureReport.objects.all()
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
+
+    def get_serializer_class(self):
+        if self.request.method.lower()=='get':
+            return FailureReportListSerializer
+        return FailureReportCreateSerializer
+
+    def get_permissions(self):
+        if self.request.method.lower()=='post':
+            self.permission_classes=[IsStandard]
+        elif self.request.method.lower()=='get':
+            self.permission_classes=[IsManager|IsAdmin]
+        elif self.request.method.lower()=='options':
+            self.permission_classes=[DisableOPTIONSMethod]
+        return super().get_permissions()
+
+class FailureReportRetrieveAPIView(generics.RetrieveAPIView):
+    queryset = FailureReport.objects.all()
+    serializer_class = FailureReportRetrieveSerializer
+    def get_permissions(self):
+        if self.request.method.lower()=='get':
             self.permission_classes=[IsManager|IsAdmin]
         elif self.request.method.lower()=='options':
             self.permission_classes=[DisableOPTIONSMethod]

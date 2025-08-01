@@ -120,6 +120,7 @@ class FailureReport(models.Model):
         RESOLVED='R'
     id=models.UUIDField(primary_key=True,default=uuid.uuid4,editable=False)
     vehicle=models.ForeignKey('Vehicle',on_delete=models.CASCADE, related_name='failure_reports')
+    title=models.CharField(max_length=100)
     description=models.TextField()
     workshop=models.ForeignKey('Location',on_delete=models.SET_NULL, null=True, blank=True, related_name='failure_reports')
     report_date=models.DateTimeField(auto_now_add=True)
