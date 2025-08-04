@@ -111,11 +111,12 @@ class UserLocationAssignment(models.Model):
     location=models.ForeignKey('Location',on_delete=models.CASCADE, related_name='user_location_assignment')
     assign_date=models.DateTimeField(auto_now_add=True)
 
-
+#TODO: dodać status dla przypadku, gdy zdjęty został workshop ze zgłoszenia/workshop został usunięty ale RepairReport już istnieje. Taka sytuacja nie może być traktowana na równi z samym PENDING
 class FailureReport(models.Model):
     class FailureStatusChoices(models.TextChoices):
         PENDING='P'
         ASSIGNED='A'
+        STOPPED='S'
         DISMISSED='D'
         RESOLVED='R'
     id=models.UUIDField(primary_key=True,default=uuid.uuid4,editable=False)
@@ -141,6 +142,5 @@ class RepairReport(models.Model):
     repair_action=models.TextField()
     cost=models.DecimalField(max_digits=8,decimal_places=2)
     report_date=models.DateTimeField(auto_now_add=True)
-    ready_for_review=models.BooleanField(default=False)
     # noinspection PyUnresolvedReferences
     status=models.CharField(max_length=1,choices=RepairStatusChoices.choices,default=RepairStatusChoices.ACTIVE)

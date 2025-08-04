@@ -300,6 +300,7 @@ class FailureReportRetrieveAPIView(generics.RetrieveAPIView):
         elif self.request.method.lower()=='options':
             self.permission_classes=[DisableOPTIONSMethod]
         return super().get_permissions()
+
 #TODO wytestować bo syfny kod
 class FailureReportAssignWorkshopAPIView(APIView):
     def post(self, request):

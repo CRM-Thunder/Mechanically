@@ -6,7 +6,7 @@ from rest_framework.generics import get_object_or_404
 from rest_framework.exceptions import PermissionDenied, NotFound
 from rest_framework.validators import UniqueValidator
 
-from .models import Manufacturer, User, Location, UserLocationAssignment, Vehicle, FailureReport
+from .models import Manufacturer, User, Location, UserLocationAssignment, Vehicle, FailureReport, RepairReport
 from .validators import manufacturer_name_validator, first_name_validator, last_name_validator, phone_number_validator, location_name_validator, vin_validator, vehicle_model_validator, vehicle_year_validator
 from .generators import generate_username, generate_random_password
 from .mail_services import send_activation_email, send_reset_password_email
@@ -394,7 +394,7 @@ class FailureReportCreateSerializer(serializers.ModelSerializer):
         author_branch=UserLocationAssignment.objects.get(user=self.context.get('request').user).location
         if value.location!=author_branch:
             raise NotFound('There is no vehicle with provided ID assigned to your branch.')
-        if FailureReport.objects.filter(vehicle_id=value.id,status__in=['P','A']).exists():
+        if FailureReport.objects.filter(vehicle_id=value.id,status__in=['P','A','S']).exists():
             raise serializers.ValidationError('Vehicle is already reported as failure.')
         return value
 
@@ -437,4 +437,9 @@ class FailureReportAssignWorkshopSerializer(serializers.Serializer):
         failure_report.workshop=workshop
         failure_report.status='A'
         failure_report.save()
-        return "Failure report has been successfully assigned to selected workshop."
+        #TODO: zmienić warunek uwzględniając osobny status dla rozpoczętego RepairReport ale bez warsztatu
+        if RepairReport.objects.filter(failure_report=failure_report, status__in=['A','R']).exists():
+            repair_report=RepairReport.objects.get(failure_report=failure_report)
+        else:
+            repair_report=RepairReport.objects.create(failure_report=failure_report,status='A',cost=0)
+        return {'failure_report':failure_report,'repair_report':repair_report}
