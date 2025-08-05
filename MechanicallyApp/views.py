@@ -5,12 +5,12 @@ from .serializers import ManufacturerSerializer, LocationSerializer, UserNestedL
 VehicleCreateUpdateSerializer, VehicleRetrieveSerializer, VehicleListSerializer, AccountActivationSerializer, \
 UserCreateSerializer, UserListSerializer,UserUpdateSerializer, ResetPasswordSerializer, ResetPasswordRequestSerializer, \
 UserRetrieveSerializer, UserLocationAssignmentSerializer, FailureReportCreateSerializer, FailureReportListSerializer, \
-FailureReportRetrieveSerializer, FailureReportAssignWorkshopSerializer
+FailureReportRetrieveSerializer, FailureReportAssignSerializer, FailureReportDismissedSerializer, FailureReportReassignSerializer
 from rest_framework import generics, status
 from rest_framework.views import APIView
 from .permissions import IsStandard, IsManager, IsAdmin, IsMechanic, DisableOPTIONSMethod, IsAdminOrSuperuserAndTargetUserHasLowerRole
 from rest_framework.permissions import IsAuthenticated
-
+#TODO: rozważyć usunięcie endpointa my-location i zmodyfikować LocationListSerializer i LocationRetrieveSerializer aby standard i mechanik mogli wyświetlić tylko swoją lokację
 
 #dodawać i edytować Manufacturera może administrator, reszta może wypisywać
 class ManufacturerListCreateAPIView(generics.ListCreateAPIView):
@@ -270,6 +270,8 @@ class UnassignUserFromLocationAPIView(APIView):
             self.permission_classes=[DisableOPTIONSMethod]
         return super().get_permissions()
 
+#TODO: wytestować wszystkie widoki FailureReport
+#widok ten służy do tworzenia failure reportów przez standardowego użytkownika oraz wypisywania ich przez menadżera i admina
 class FailureReportListCreateAPIView(generics.ListCreateAPIView):
     queryset = FailureReport.objects.all()
     def get_serializer_context(self):
@@ -291,6 +293,7 @@ class FailureReportListCreateAPIView(generics.ListCreateAPIView):
             self.permission_classes=[DisableOPTIONSMethod]
         return super().get_permissions()
 
+#to widok dla menadżerów i adminów do wyświetlania dokładnych informacji o danym FailureReport
 class FailureReportRetrieveAPIView(generics.RetrieveAPIView):
     queryset = FailureReport.objects.all()
     serializer_class = FailureReportRetrieveSerializer
@@ -301,10 +304,45 @@ class FailureReportRetrieveAPIView(generics.RetrieveAPIView):
             self.permission_classes=[DisableOPTIONSMethod]
         return super().get_permissions()
 
-#TODO wytestować bo syfny kod
-class FailureReportAssignWorkshopAPIView(APIView):
+#to widok do pierwszego przypisania warsztatu do failure, tylko dla zgłoszeń w statusie PENDING
+class FailureReportAssignPIView(APIView):
+    def get_permissions(self):
+        if self.request.method.lower()=='post':
+            self.permission_classes=[IsManager]
+        elif self.request.method.lower()=='options':
+            self.permission_classes=[DisableOPTIONSMethod]
+        return super().get_permissions()
+
     def post(self, request):
-        serializer=FailureReportAssignWorkshopSerializer(data=request.data)
+        serializer=FailureReportAssignSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        result=serializer.save()
+        return Response({'result':result}, status=status.HTTP_200_OK)
+
+class FailureReportDismissedAPIView(APIView):
+    def get_permissions(self):
+        if self.request.method.lower()=='post':
+            self.permission_classes=[IsManager]
+        elif self.request.method.lower()=='options':
+            self.permission_classes=[DisableOPTIONSMethod]
+        return super().get_permissions()
+
+    def post(self, request):
+        serializer=FailureReportDismissedSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        result=serializer.save()
+        return Response({'result':result}, status=status.HTTP_200_OK)
+
+class FailureReportReassignAPIView(APIView):
+    def get_permissions(self):
+        if self.request.method.lower()=='post':
+            self.permission_classes=[IsManager]
+        elif self.request.method.lower()=='options':
+            self.permission_classes=[DisableOPTIONSMethod]
+        return super().get_permissions()
+
+    def post(self, request):
+        serializer=FailureReportReassignSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         result=serializer.save()
         return Response({'result':result}, status=status.HTTP_200_OK)

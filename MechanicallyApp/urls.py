@@ -21,5 +21,7 @@ urlpatterns = [
     path('users/unassign/<uuid:user_id>/',views.UnassignUserFromLocationAPIView.as_view(), name='user-unassign'),
     path('failure-reports/',views.FailureReportListCreateAPIView.as_view(), name='failure-report-list'),
     path('failure-reports/<uuid:pk>/',views.FailureReportRetrieveAPIView.as_view(), name='failure-report-detail'),
+    path('failure-reports/assign/',views.FailureReportAssignPIView.as_view(), name='failure-report-assign'),
+    path('failure-reports/dismiss/',views.FailureReportDismissedAPIView.as_view(), name='failure-report-dismiss'),
 
 ]
