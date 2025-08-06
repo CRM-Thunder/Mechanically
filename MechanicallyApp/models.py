@@ -140,6 +140,6 @@ class RepairReport(models.Model):
     condition_analysis=models.TextField()
     repair_action=models.TextField()
     cost=models.DecimalField(max_digits=8,decimal_places=2)
-    report_date=models.DateTimeField(auto_now_add=True)
+    last_change_date=models.DateTimeField(auto_now=True)
     # noinspection PyUnresolvedReferences
     status=models.CharField(max_length=1,choices=RepairStatusChoices.choices,default=RepairStatusChoices.ACTIVE)

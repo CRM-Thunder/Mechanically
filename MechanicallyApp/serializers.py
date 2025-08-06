@@ -414,6 +414,12 @@ class FailureReportListSerializer(serializers.ModelSerializer):
         fields=['id','title','vehicle','status','report_date']
         read_only_fields=['id','title','vehicle','status','report_date']
 
+class FailureReportInfoForRepairReportSerializer(serializers.ModelSerializer):
+    class Meta:
+        model=FailureReport
+        fields=['id','title','vehicle','description','status','report_date']
+        read_only_fields=['id','title','vehicle','description','status','report_date']
+
 class FailureReportRetrieveSerializer(serializers.ModelSerializer):
     vehicle=VehicleRetrieveSerializer(read_only=True)
     report_author=UserRetrieveSerializer(read_only=True)
@@ -464,3 +470,30 @@ class FailureReportReassignSerializer(serializers.Serializer):
         failure_report.status = 'A'
         failure_report.save()
         return "Report has been successfully reassigned to selected workshop."
+
+class RepairReportRetrieveUpdateSerializer(serializers.ModelSerializer):
+    failure_report=FailureReportInfoForRepairReportSerializer(read_only=True)
+    class Meta:
+        model=RepairReport
+        fields='__all__'
+        read_only_fields=['id','failure_report','last_change_date','status']
+
+    def validate_cost(self,value):
+        if value<0:
+            raise serializers.ValidationError('Cost cannot be negative.')
+        return value
+
+    def validate(self,data):
+        if self.instance.status!='A':
+            raise serializers.ValidationError('Repair report cannot be modified if not in ACTIVE status.')
+        return data
+
+class RepairReportListSerializer(serializers.ModelSerializer):
+    title=serializers.CharField(source='failure_report.title',read_only=True)
+    vehicle_id=serializers.UUIDField(source='failure_report.vehicle_id',read_only=True)
+    report_date=serializers.DateTimeField(source='failure_report.report_date',read_only=True)
+    class Meta:
+        model=RepairReport
+        fields=['id','status','title','vehicle_id','report_date']
+        read_only_fields=['id','status','title','vehicle_id','report_date']
+

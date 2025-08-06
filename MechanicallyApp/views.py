@@ -1,11 +1,12 @@
 from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
-from .models import Manufacturer, Location, UserLocationAssignment, Vehicle, User, FailureReport
+from .models import Manufacturer, Location, UserLocationAssignment, Vehicle, User, FailureReport, RepairReport
 from .serializers import ManufacturerSerializer, LocationSerializer, UserNestedLocationAssignmentSerializer, \
 VehicleCreateUpdateSerializer, VehicleRetrieveSerializer, VehicleListSerializer, AccountActivationSerializer, \
 UserCreateSerializer, UserListSerializer,UserUpdateSerializer, ResetPasswordSerializer, ResetPasswordRequestSerializer, \
 UserRetrieveSerializer, UserLocationAssignmentSerializer, FailureReportCreateSerializer, FailureReportListSerializer, \
-FailureReportRetrieveSerializer, FailureReportAssignSerializer, FailureReportDismissedSerializer, FailureReportReassignSerializer
+FailureReportRetrieveSerializer, FailureReportAssignSerializer, FailureReportDismissedSerializer, FailureReportReassignSerializer, \
+RepairReportRetrieveUpdateSerializer, RepairReportListSerializer
 from rest_framework import generics, status
 from rest_framework.views import APIView
 from .permissions import IsStandard, IsManager, IsAdmin, IsMechanic, DisableOPTIONSMethod, IsAdminOrSuperuserAndTargetUserHasLowerRole
@@ -346,3 +347,35 @@ class FailureReportReassignAPIView(APIView):
         serializer.is_valid(raise_exception=True)
         result=serializer.save()
         return Response({'result':result}, status=status.HTTP_200_OK)
+
+class RepairReportListAPIView(generics.ListAPIView):
+    #TODO: dostosować do specyficznych uprawnień mechanika ponieważ object level permissions nie są wywoływane dla listowania
+    queryset = RepairReport.objects.all()
+    serializer_class = RepairReportListSerializer
+    def get_permissions(self):
+        if self.request.method.lower()=='get':
+            self.permission_classes=[IsMechanic|IsManager|IsAdmin]
+        elif self.request.method.lower()=='options':
+            self.permission_classes=[DisableOPTIONSMethod]
+        return super().get_permissions()
+
+    def get_queryset(self):
+        qs=super().get_queryset()
+        if self.request.user.role=='mechanic' and UserLocationAssignment.objects.filter(user=self.request.user).exists():
+            #to załatwia problem napraw wykonanych w danym warsztacie ale nie wyświetli failure reportów dla pojazdów obecnie znajdujących się w warsztacie ale naprawianych wcześniej gdzieś indziej
+            return qs.filter(failure_report__workshop=UserLocationAssignment.objects.get(user=self.request.user).location)
+
+
+class RepairReportRetrieveUpdateAPIView(generics.RetrieveUpdateAPIView):
+    # TODO: dostosować do specyficznych uprawnień mechanika
+    queryset = RepairReport.objects.all()
+    serializer_class = RepairReportRetrieveUpdateSerializer
+    # TODO: stworzyć nowy rodzaj uprawnień dla mechanika przypisanego do danego warsztatu
+    def get_permissions(self):
+        if self.request.method.lower() in ('put','patch'):
+            self.permission_classes=[IsMechanic]
+        elif self.request.method.lower()=='get':
+            self.permission_classes=[IsManager|IsAdmin]
+        elif self.request.method.lower()=='options':
+            self.permission_classes=[DisableOPTIONSMethod]
+        return super().get_permissions()
