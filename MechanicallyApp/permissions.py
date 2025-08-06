@@ -45,11 +45,10 @@ class IsMechanic(BasePermission):
             return True
         return False
 
-class DisableOPTIONSMethod(BasePermission):
-    message="Method \"OPTIONS\" not allowed"
+class DisableUnwantedHTTPMethods(BasePermission):
     def has_permission(self, request, view):
-        if request.method=='OPTIONS':
-            raise MethodNotAllowed(method='OPTIONS')
+        if request.method.lower() in ('options','trace','connect'):
+            raise MethodNotAllowed(method=request.method.upper())
         return True
 
 class IsAccountOwner(BasePermission):

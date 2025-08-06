@@ -2,83 +2,98 @@ from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 from .models import Manufacturer, Location, UserLocationAssignment, Vehicle, User, FailureReport, RepairReport
 from .serializers import ManufacturerSerializer, LocationSerializer, UserNestedLocationAssignmentSerializer, \
-VehicleCreateUpdateSerializer, VehicleRetrieveSerializer, VehicleListSerializer, AccountActivationSerializer, \
-UserCreateSerializer, UserListSerializer,UserUpdateSerializer, ResetPasswordSerializer, ResetPasswordRequestSerializer, \
-UserRetrieveSerializer, UserLocationAssignmentSerializer, FailureReportCreateSerializer, FailureReportListSerializer, \
-FailureReportRetrieveSerializer, FailureReportAssignSerializer, FailureReportDismissedSerializer, FailureReportReassignSerializer, \
-RepairReportRetrieveUpdateSerializer, RepairReportListSerializer
+    VehicleCreateUpdateSerializer, VehicleRetrieveSerializer, VehicleListSerializer, AccountActivationSerializer, \
+    UserCreateSerializer, UserListSerializer, UserUpdateSerializer, ResetPasswordSerializer, \
+    ResetPasswordRequestSerializer, \
+    UserRetrieveSerializer, UserLocationAssignmentSerializer, FailureReportCreateSerializer, \
+    FailureReportListSerializer, \
+    FailureReportRetrieveSerializer, FailureReportAssignSerializer, FailureReportDismissedSerializer, \
+    FailureReportReassignSerializer, \
+    RepairReportRetrieveUpdateSerializer, RepairReportListSerializer
 from rest_framework import generics, status
 from rest_framework.views import APIView
-from .permissions import IsStandard, IsManager, IsAdmin, IsMechanic, DisableOPTIONSMethod, IsAdminOrSuperuserAndTargetUserHasLowerRole
+from .permissions import IsStandard, IsManager, IsAdmin, IsMechanic, DisableUnwantedHTTPMethods, \
+    IsAdminOrSuperuserAndTargetUserHasLowerRole
 from rest_framework.permissions import IsAuthenticated
-#TODO: rozważyć usunięcie endpointa my-location i zmodyfikować LocationListSerializer i LocationRetrieveSerializer aby standard i mechanik mogli wyświetlić tylko swoją lokację
 
+
+#TODO: rozważyć usunięcie endpointa my-location i zmodyfikować LocationListSerializer i LocationRetrieveSerializer aby standard i mechanik mogli wyświetlić tylko swoją lokację
+UNWANTED_HTTP_METHODS= ('options', 'trace', 'connect')
 #dodawać i edytować Manufacturera może administrator, reszta może wypisywać
 class ManufacturerListCreateAPIView(generics.ListCreateAPIView):
     queryset = Manufacturer.objects.all()
     serializer_class = ManufacturerSerializer
+
     def get_permissions(self):
-        if self.request.method.lower()=='post':
-            self.permission_classes=[IsAdmin]
-        elif self.request.method.lower()=='get':
-            self.permission_classes=[IsAuthenticated]
-        elif self.request.method.lower()=='options':
-            self.permission_classes=[DisableOPTIONSMethod]
+        if self.request.method.lower() == 'post':
+            self.permission_classes = [IsAdmin]
+        elif self.request.method.lower() in ('get','head'):
+            self.permission_classes = [IsAuthenticated]
+        elif self.request.method.lower() in UNWANTED_HTTP_METHODS:
+            self.permission_classes = [DisableUnwantedHTTPMethods]
         return super().get_permissions()
+
 
 class ManufacturerRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Manufacturer.objects.all()
     serializer_class = ManufacturerSerializer
+
     def get_permissions(self):
-        if self.request.method.lower()=='get':
-            self.permission_classes=[IsAuthenticated]
-        elif self.request.method.lower() in ('put','patch','delete'):
-            self.permission_classes=[IsAdmin]
-        elif self.request.method.lower()=='options':
-            self.permission_classes=[DisableOPTIONSMethod]
+        if self.request.method.lower() in ('get','head'):
+            self.permission_classes = [IsAuthenticated]
+        elif self.request.method.lower() in ('put', 'patch', 'delete'):
+            self.permission_classes = [IsAdmin]
+        elif self.request.method.lower() in UNWANTED_HTTP_METHODS:
+            self.permission_classes = [DisableUnwantedHTTPMethods]
         return super().get_permissions()
+
 
 #dodawać, usuwać oraz modyfikować lokalizacje może administrator
 #wypisywać wszystkie lokalizacje może menadżer i admin
 class LocationListCreateAPIView(generics.ListCreateAPIView):
     queryset = Location.objects.all()
     serializer_class = LocationSerializer
+
     def get_permissions(self):
-        if self.request.method.lower()=='get':
-            self.permission_classes=[IsManager|IsAdmin]
-        elif self.request.method.lower()=='post':
-            self.permission_classes=[IsAdmin]
-        elif self.request.method.lower()=='options':
-            self.permission_classes=[DisableOPTIONSMethod]
+        if self.request.method.lower() in ('get','head'):
+            self.permission_classes = [IsManager | IsAdmin]
+        elif self.request.method.lower() == 'post':
+            self.permission_classes = [IsAdmin]
+        elif self.request.method.lower() in UNWANTED_HTTP_METHODS:
+            self.permission_classes = [DisableUnwantedHTTPMethods]
         return super().get_permissions()
 
 
 class LocationRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Location.objects.all()
     serializer_class = LocationSerializer
+
     def get_permissions(self):
-        if self.request.method.lower()=='get':
-            self.permission_classes=[IsManager|IsAdmin]
-        elif self.request.method.lower() in ('put','patch','delete'):
-            self.permission_classes=[IsAdmin]
-        elif self.request.method.lower()=='options':
-            self.permission_classes=[DisableOPTIONSMethod]
+        if self.request.method.lower() in ('get','head'):
+            self.permission_classes = [IsManager | IsAdmin]
+        elif self.request.method.lower() in ('put', 'patch', 'delete'):
+            self.permission_classes = [IsAdmin]
+        elif self.request.method.lower() in UNWANTED_HTTP_METHODS:
+            self.permission_classes = [DisableUnwantedHTTPMethods]
         return super().get_permissions()
+
 
 #informacje o swojej lokalizacji może wypisywać standard i mechanik
 class UserLocationListAPIView(generics.ListAPIView):
     queryset = UserLocationAssignment.objects.all()
     serializer_class = UserNestedLocationAssignmentSerializer
+
     def get_queryset(self):
-        qs=super().get_queryset()
+        qs = super().get_queryset()
         return qs.filter(user=self.request.user)
 
     def get_permissions(self):
-        if self.request.method.lower()=='get':
-            self.permission_classes=[IsMechanic|IsStandard]
-        elif self.request.method.lower()=='options':
-            self.permission_classes = [DisableOPTIONSMethod]
+        if self.request.method.lower() in ('get','head'):
+            self.permission_classes = [IsMechanic | IsStandard]
+        elif self.request.method.lower() in UNWANTED_HTTP_METHODS:
+            self.permission_classes = [DisableUnwantedHTTPMethods]
         return super().get_permissions()
+
 
 #ten widok umożliwia wypisywanie i tworzenie pojazdów przez menadżera oraz administratora
 #za pomocą odpowiednich query setów muszę zaimplementować wypisywanie pojazdów z siedziby standarda
@@ -88,153 +103,138 @@ class VehicleListCreateAPIView(generics.ListCreateAPIView):
     serializer_class = VehicleListSerializer
 
     def get_serializer_class(self):
-        if self.request.method.lower()=='post':
+        if self.request.method.lower() == 'post':
             return VehicleCreateUpdateSerializer
         return VehicleListSerializer
 
     def get_permissions(self):
-        if self.request.method.lower()=='get':
-            self.permission_classes=[IsAuthenticated]
-        elif self.request.method.lower()=='post':
-            self.permission_classes=[IsManager|IsAdmin]
-        elif self.request.method.lower()=='options':
-            self.permission_classes=[DisableOPTIONSMethod]
+        if self.request.method.lower() in ('get','head'):
+            self.permission_classes = [IsAuthenticated]
+        elif self.request.method.lower() == 'post':
+            self.permission_classes = [IsManager | IsAdmin]
+        elif self.request.method.lower() in UNWANTED_HTTP_METHODS:
+            self.permission_classes = [DisableUnwantedHTTPMethods]
         return super().get_permissions()
 
     def get_queryset(self):
-        qs=super().get_queryset()
-        if self.request.method=='GET':
-            if self.request.user.role=='standard':
-                standard_location=UserLocationAssignment.objects.get(user=self.request.user).location
+        qs = super().get_queryset()
+        if self.request.method.lower() == 'get':
+            if self.request.user.role == 'standard':
+                standard_location = UserLocationAssignment.objects.get(user=self.request.user).location
                 return qs.filter(location=standard_location)
-            elif self.request.user.role=='mechanic':
-                mechanic_location=UserLocationAssignment.objects.get(user=self.request.user).location
+            elif self.request.user.role == 'mechanic':
+                mechanic_location = UserLocationAssignment.objects.get(user=self.request.user).location
                 return qs.filter(failure_reports__workshop=mechanic_location)
         return qs
+
 
 #ten widok umożliwia menadżerowi oraz administratorowi odczytywanie, aktualizowanie oraz usuwanie pojazdu
 class VehicleRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Vehicle.objects.all()
+
     def get_serializer_class(self):
-        if self.request.method.lower()=='get':
+        if self.request.method.lower() == 'get':
             return VehicleRetrieveSerializer
         return VehicleCreateUpdateSerializer
 
     def get_permissions(self):
-        if self.request.method.lower() in ('put','patch','delete'):
-            self.permission_classes=[IsManager|IsAdmin]
-        elif self.request.method.lower()=='options':
-            self.permission_classes=[DisableOPTIONSMethod]
+        if self.request.method.lower() in ('get','head'):
+            self.permission_classes = [IsAuthenticated]
+        elif self.request.method.lower() in ('put', 'patch', 'delete'):
+            self.permission_classes = [IsManager | IsAdmin]
+        elif self.request.method.lower() in UNWANTED_HTTP_METHODS:
+            self.permission_classes = [DisableUnwantedHTTPMethods]
         return super().get_permissions()
 
     def get_queryset(self):
-        qs=super().get_queryset()
-        if self.request.method.lower()=='get':
-            if self.request.user.role=='standard':
-                standard_location=UserLocationAssignment.objects.get(user=self.request.user).location
+        qs = super().get_queryset()
+        if self.request.method.lower() == 'get':
+            if self.request.user.role == 'standard':
+                standard_location = UserLocationAssignment.objects.get(user=self.request.user).location
                 return qs.filter(location=standard_location)
-            elif self.request.user.role=='mechanic':
-                mechanic_location=UserLocationAssignment.objects.get(user=self.request.user).location
+            elif self.request.user.role == 'mechanic':
+                mechanic_location = UserLocationAssignment.objects.get(user=self.request.user).location
                 return qs.filter(failure_reports__workshop=mechanic_location)
         return qs
+
 
 #jest to widok służący do aktywacji konta oraz zmiany hasła z domyślnego na wybrane przez usera
 #TODO: przetestować poprawność działania
 class AccountActivationAPIView(APIView):
-    permission_classes = [~IsAuthenticated]
+    def get_permissions(self):
+        if self.request.method.lower()=='post':
+            self.permission_classes = [~IsAuthenticated]
+        elif self.request.method.lower() in UNWANTED_HTTP_METHODS:
+            self.permission_classes = [DisableUnwantedHTTPMethods]
+        return super().get_permissions()
 
-    def post(self,request):
+    def post(self, request):
         serializer = AccountActivationSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        result=serializer.save()
-        return Response({'result':result}, status=status.HTTP_200_OK)
+        result = serializer.save()
+        return Response({'result': result}, status=status.HTTP_200_OK)
+
 
 #TODO: przetestować workflow resetu hasła, w przyszłości dodać throttling aby uniknąć DoS
 #widok służący do wysyłania email w związku z żądaniem resetu hasła
 class ResetPasswordRequestAPIView(APIView):
-    permission_classes = [~IsAuthenticated]
+    def get_permissions(self):
+        if self.request.method.lower()=='post':
+            self.permission_classes = [~IsAuthenticated]
+        elif self.request.method.lower() in UNWANTED_HTTP_METHODS:
+            self.permission_classes = [DisableUnwantedHTTPMethods]
+        return super().get_permissions()
 
-    def post(self,request):
-        serializer=ResetPasswordRequestSerializer(data=request.data)
+    def post(self, request):
+        serializer = ResetPasswordRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        result=serializer.save()
-        return Response({'result':result}, status=status.HTTP_200_OK)
+        result = serializer.save()
+        return Response({'result': result}, status=status.HTTP_200_OK)
+
 
 #widok służący do resetowania hasła
 class ResetPasswordAPIView(APIView):
-    permission_classes = [~IsAuthenticated]
+    def get_permissions(self):
+        if self.request.method.lower()=='post':
+            self.permission_classes = [~IsAuthenticated]
+        elif self.request.method.lower() in UNWANTED_HTTP_METHODS:
+            self.permission_classes = [DisableUnwantedHTTPMethods]
+        return super().get_permissions()
 
-    def post(self,request):
-        serializer=ResetPasswordSerializer(data=request.data)
+    def post(self, request):
+        serializer = ResetPasswordSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        result=serializer.save()
-        return Response({'result':result}, status=status.HTTP_200_OK)
+        result = serializer.save()
+        return Response({'result': result}, status=status.HTTP_200_OK)
 
 
 #Jest to widok służący do utworzenia konta użytkownika oraz ich wylistowania. Zakres użytkowników oraz uprawnienia różnią się w zależności od roli użytkownika
 class UserListCreateAPIView(generics.ListCreateAPIView):
     queryset = User.objects.all()
-    permission_classes = [IsAuthenticated]
 
     def get_permissions(self):
-        if self.request.method.lower()=='get':
-            self.permission_classes=[IsAuthenticated]
-        elif self.request.method.lower()=='post':
-            self.permission_classes=[IsAdmin]
-        elif self.request.method.lower() == 'options':
-            self.permission_classes = [DisableOPTIONSMethod]
+        if self.request.method.lower() in ('get','head'):
+            self.permission_classes = [IsAuthenticated]
+        elif self.request.method.lower() == 'post':
+            self.permission_classes = [IsAdmin]
+        elif self.request.method.lower() in UNWANTED_HTTP_METHODS:
+            self.permission_classes = [DisableUnwantedHTTPMethods]
         return super().get_permissions()
 
     def get_serializer_class(self):
-        if self.request.method.lower()=='get':
+        if self.request.method.lower() == 'get':
             return UserListSerializer
         return UserCreateSerializer
 
     def get_serializer_context(self):
-        context=super().get_serializer_context()
-        context['is_superuser']=self.request.user.is_superuser
-        return context
-#mechanik oraz standard mogą wypisać współpracowników z lokacji, menadżer może wyświetlać standardy, mechaników i menadżerów, admin może wypisywać wszystkich poza superuserem, superuser wszystkich
-    def get_queryset(self):
-        qs = super().get_queryset()
-        if self.request.method.lower()=='get':
-            if self.request.user.role=='standard' or self.request.user.role=='mechanic':
-                if UserLocationAssignment.objects.filter(user=self.request.user).exists():
-                    return qs.filter(user_location_assignment__location=UserLocationAssignment.objects.get(user=self.request.user).location)
-                else:
-                    return qs.filter(pk=self.request.user.pk)
-            elif self.request.user.role=='manager':
-                return qs.exclude(role='admin')
-            elif self.request.user.role=='admin' and self.request.user.is_superuser==False:
-                return qs.exclude(is_superuser=True)
-        return qs
-
-class UserRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
-    queryset = User.objects.all()
-    permission_classes = [IsAuthenticated]
-
-    def get_serializer_class(self):
-        if self.request.method.lower() in ('put','patch','delete'):
-            return UserUpdateSerializer
-        return UserRetrieveSerializer
-
-    def get_serializer_context(self):
         context = super().get_serializer_context()
-        context['request'] = self.request
+        context['is_superuser'] = self.request.user.is_superuser
         return context
 
-    def get_permissions(self):
-        if self.request.method.lower()=='get':
-            self.permission_classes=[IsAuthenticated]
-        elif self.request.method.lower() in ('put','patch','delete'):
-            self.permission_classes=[IsAdminOrSuperuserAndTargetUserHasLowerRole]
-        elif self.request.method.lower()=='options':
-            self.permission_classes=[DisableOPTIONSMethod]
-        return super().get_permissions()
-
+    #mechanik oraz standard mogą wypisać współpracowników z lokacji, menadżer może wyświetlać standardy, mechaników i menadżerów, admin może wypisywać wszystkich poza superuserem, superuser wszystkich
     def get_queryset(self):
         qs = super().get_queryset()
-        if self.request.method.lower()=='get':
+        if self.request.method.lower() == 'get':
             if self.request.user.role == 'standard' or self.request.user.role == 'mechanic':
                 if UserLocationAssignment.objects.filter(user=self.request.user).exists():
                     return qs.filter(user_location_assignment__location=UserLocationAssignment.objects.get(
@@ -247,135 +247,195 @@ class UserRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
                 return qs.exclude(is_superuser=True)
         return qs
 
+
+class UserRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = User.objects.all()
+    permission_classes = [IsAuthenticated]
+
+    def get_serializer_class(self):
+        if self.request.method.lower() in ('put', 'patch', 'delete'):
+            return UserUpdateSerializer
+        return UserRetrieveSerializer
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
+
+    def get_permissions(self):
+        if self.request.method.lower() in ('get','head'):
+            self.permission_classes = [IsAuthenticated]
+        elif self.request.method.lower() in ('put', 'patch', 'delete'):
+            self.permission_classes = [IsAdminOrSuperuserAndTargetUserHasLowerRole]
+        elif self.request.method.lower() in UNWANTED_HTTP_METHODS:
+            self.permission_classes = [DisableUnwantedHTTPMethods]
+        return super().get_permissions()
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        if self.request.method.lower() == 'get':
+            if self.request.user.role == 'standard' or self.request.user.role == 'mechanic':
+                if UserLocationAssignment.objects.filter(user=self.request.user).exists():
+                    return qs.filter(user_location_assignment__location=UserLocationAssignment.objects.get(
+                        user=self.request.user).location)
+                else:
+                    return qs.filter(pk=self.request.user.pk)
+            elif self.request.user.role == 'manager':
+                return qs.exclude(role='admin')
+            elif self.request.user.role == 'admin' and self.request.user.is_superuser == False:
+                return qs.exclude(is_superuser=True)
+        return qs
+
+
 class AssignUserToLocationAPIView(generics.CreateAPIView):
     queryset = UserLocationAssignment.objects.all()
     serializer_class = UserLocationAssignmentSerializer
 
     def get_permissions(self):
-        if self.request.method.lower()=='post':
-            self.permission_classes=[IsManager|IsAdmin]
-        elif self.request.method.lower()=='options':
-            self.permission_classes=[DisableOPTIONSMethod]
+        if self.request.method.lower() == 'post':
+            self.permission_classes = [IsManager | IsAdmin]
+        elif self.request.method.lower() in UNWANTED_HTTP_METHODS:
+            self.permission_classes = [DisableUnwantedHTTPMethods]
         return super().get_permissions()
 
+
 class UnassignUserFromLocationAPIView(APIView):
-    def delete(self,request,user_id):
-        obj=get_object_or_404(UserLocationAssignment,user_id=user_id)
+    def delete(self, request, user_id):
+        obj = get_object_or_404(UserLocationAssignment, user_id=user_id)
         obj.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     def get_permissions(self):
-        if self.request.method.lower()=='delete':
-            self.permission_classes=[IsManager|IsAdmin]
-        elif self.request.method.lower()=='options':
-            self.permission_classes=[DisableOPTIONSMethod]
+        if self.request.method.lower() == 'delete':
+            self.permission_classes = [IsManager | IsAdmin]
+        elif self.request.method.lower() in UNWANTED_HTTP_METHODS:
+            self.permission_classes = [DisableUnwantedHTTPMethods]
         return super().get_permissions()
+
 
 #TODO: wytestować wszystkie widoki FailureReport
 #widok ten służy do tworzenia failure reportów przez standardowego użytkownika oraz wypisywania ich przez menadżera i admina
 class FailureReportListCreateAPIView(generics.ListCreateAPIView):
     queryset = FailureReport.objects.all()
+
     def get_serializer_context(self):
         context = super().get_serializer_context()
         context['request'] = self.request
         return context
 
     def get_serializer_class(self):
-        if self.request.method.lower()=='get':
+        if self.request.method.lower() == 'get':
             return FailureReportListSerializer
         return FailureReportCreateSerializer
 
     def get_permissions(self):
-        if self.request.method.lower()=='post':
-            self.permission_classes=[IsStandard]
-        elif self.request.method.lower()=='get':
-            self.permission_classes=[IsManager|IsAdmin]
-        elif self.request.method.lower()=='options':
-            self.permission_classes=[DisableOPTIONSMethod]
+        if self.request.method.lower() == 'post':
+            self.permission_classes = [IsStandard]
+        elif self.request.method.lower() in ('get','head'):
+            self.permission_classes = [IsManager | IsAdmin]
+        elif self.request.method.lower() in UNWANTED_HTTP_METHODS:
+            self.permission_classes = [DisableUnwantedHTTPMethods]
         return super().get_permissions()
+
 
 #to widok dla menadżerów i adminów do wyświetlania dokładnych informacji o danym FailureReport
 class FailureReportRetrieveAPIView(generics.RetrieveAPIView):
     queryset = FailureReport.objects.all()
     serializer_class = FailureReportRetrieveSerializer
+
     def get_permissions(self):
-        if self.request.method.lower()=='get':
-            self.permission_classes=[IsManager|IsAdmin]
-        elif self.request.method.lower()=='options':
-            self.permission_classes=[DisableOPTIONSMethod]
+        if self.request.method.lower() in ('get','head'):
+            self.permission_classes = [IsManager | IsAdmin]
+        elif self.request.method.lower() in UNWANTED_HTTP_METHODS:
+            self.permission_classes = [DisableUnwantedHTTPMethods]
         return super().get_permissions()
+
 
 #to widok do pierwszego przypisania warsztatu do failure, tylko dla zgłoszeń w statusie PENDING
 class FailureReportAssignPIView(APIView):
     def get_permissions(self):
-        if self.request.method.lower()=='post':
-            self.permission_classes=[IsManager]
-        elif self.request.method.lower()=='options':
-            self.permission_classes=[DisableOPTIONSMethod]
+        if self.request.method.lower() == 'post':
+            self.permission_classes = [IsManager]
+        elif self.request.method.lower() in UNWANTED_HTTP_METHODS:
+            self.permission_classes = [DisableUnwantedHTTPMethods]
         return super().get_permissions()
 
     def post(self, request):
-        serializer=FailureReportAssignSerializer(data=request.data)
+        serializer = FailureReportAssignSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        result=serializer.save()
-        return Response({'result':result}, status=status.HTTP_200_OK)
+        result = serializer.save()
+        return Response({'result': result}, status=status.HTTP_200_OK)
+
 
 class FailureReportDismissedAPIView(APIView):
     def get_permissions(self):
-        if self.request.method.lower()=='post':
-            self.permission_classes=[IsManager]
-        elif self.request.method.lower()=='options':
-            self.permission_classes=[DisableOPTIONSMethod]
+        if self.request.method.lower() == 'post':
+            self.permission_classes = [IsManager]
+        elif self.request.method.lower() in UNWANTED_HTTP_METHODS:
+            self.permission_classes = [DisableUnwantedHTTPMethods]
         return super().get_permissions()
 
     def post(self, request):
-        serializer=FailureReportDismissedSerializer(data=request.data)
+        serializer = FailureReportDismissedSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        result=serializer.save()
-        return Response({'result':result}, status=status.HTTP_200_OK)
+        result = serializer.save()
+        return Response({'result': result}, status=status.HTTP_200_OK)
+
 
 class FailureReportReassignAPIView(APIView):
     def get_permissions(self):
-        if self.request.method.lower()=='post':
-            self.permission_classes=[IsManager]
-        elif self.request.method.lower()=='options':
-            self.permission_classes=[DisableOPTIONSMethod]
+        if self.request.method.lower() == 'post':
+            self.permission_classes = [IsManager]
+        elif self.request.method.lower() in UNWANTED_HTTP_METHODS:
+            self.permission_classes = [DisableUnwantedHTTPMethods]
         return super().get_permissions()
 
     def post(self, request):
-        serializer=FailureReportReassignSerializer(data=request.data)
+        serializer = FailureReportReassignSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        result=serializer.save()
-        return Response({'result':result}, status=status.HTTP_200_OK)
+        result = serializer.save()
+        return Response({'result': result}, status=status.HTTP_200_OK)
 
+
+#widok do wypisywania wszystkich repair reportów/do filtrowania, tylko dla menadżera i admina
 class RepairReportListAPIView(generics.ListAPIView):
-    #TODO: dostosować do specyficznych uprawnień mechanika ponieważ object level permissions nie są wywoływane dla listowania
     queryset = RepairReport.objects.all()
     serializer_class = RepairReportListSerializer
+
     def get_permissions(self):
-        if self.request.method.lower()=='get':
-            self.permission_classes=[IsMechanic|IsManager|IsAdmin]
-        elif self.request.method.lower()=='options':
-            self.permission_classes=[DisableOPTIONSMethod]
+        if self.request.method.lower() in ('get','head'):
+            self.permission_classes = [IsManager | IsAdmin]
+        elif self.request.method.lower() in UNWANTED_HTTP_METHODS:
+            self.permission_classes = [DisableUnwantedHTTPMethods]
         return super().get_permissions()
 
-    def get_queryset(self):
-        qs=super().get_queryset()
-        if self.request.user.role=='mechanic' and UserLocationAssignment.objects.filter(user=self.request.user).exists():
-            #to załatwia problem napraw wykonanych w danym warsztacie ale nie wyświetli failure reportów dla pojazdów obecnie znajdujących się w warsztacie ale naprawianych wcześniej gdzieś indziej
-            return qs.filter(failure_report__workshop=UserLocationAssignment.objects.get(user=self.request.user).location)
 
+class CurrentRepairReportsInWorkshopListAPIView(generics.ListAPIView):
+    serializer_class = RepairReportListSerializer
+    permission_classes = [IsMechanic]
+
+    def get_queryset(self):
+        mechanic_workshop = get_object_or_404(UserLocationAssignment, user=self.request.user).location
+        return RepairReport.objects.filter(failure_report__workshop=mechanic_workshop, status__in=['A', 'R'])
+
+    def get_permissions(self):
+        if self.request.method.lower() in ('get','head'):
+            self.permission_classes = [IsMechanic]
+        elif self.request.method.lower() in UNWANTED_HTTP_METHODS:
+            self.permission_classes = [DisableUnwantedHTTPMethods]
+        return super().get_permissions()
 
 class RepairReportRetrieveUpdateAPIView(generics.RetrieveUpdateAPIView):
     # TODO: dostosować do specyficznych uprawnień mechanika
     queryset = RepairReport.objects.all()
     serializer_class = RepairReportRetrieveUpdateSerializer
+
     # TODO: stworzyć nowy rodzaj uprawnień dla mechanika przypisanego do danego warsztatu
     def get_permissions(self):
-        if self.request.method.lower() in ('put','patch'):
-            self.permission_classes=[IsMechanic]
-        elif self.request.method.lower()=='get':
-            self.permission_classes=[IsManager|IsAdmin]
-        elif self.request.method.lower()=='options':
-            self.permission_classes=[DisableOPTIONSMethod]
+        if self.request.method.lower() in ('put', 'patch'):
+            self.permission_classes = [IsMechanic]
+        elif self.request.method.lower() in ('get','head'):
+            self.permission_classes = [IsManager | IsAdmin]
+        elif self.request.method.lower() in UNWANTED_HTTP_METHODS:
+            self.permission_classes = [DisableUnwantedHTTPMethods]
         return super().get_permissions()
