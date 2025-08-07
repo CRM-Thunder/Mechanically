@@ -124,7 +124,6 @@ class FailureReport(models.Model):
     description=models.TextField()
     workshop=models.ForeignKey('Location',on_delete=models.SET_NULL, null=True, blank=True, related_name='failure_reports')
     report_date=models.DateTimeField(auto_now_add=True)
-    #zabezpieczyć aby tylko standardowy/menadżer mógł być autorem
     report_author=models.ForeignKey('User',on_delete=models.SET_NULL, related_name='failure_reports',null=True)
     # noinspection PyUnresolvedReferences
     status=models.CharField(max_length=1,choices=FailureStatusChoices.choices,default=FailureStatusChoices.PENDING)

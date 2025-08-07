@@ -1,6 +1,8 @@
 from rest_framework.permissions import BasePermission
-from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework.exceptions import MethodNotAllowed
+from MechanicallyApp.models import UserLocationAssignment
+
+
 class IsAdmin(BasePermission):
     def has_permission(self, request, view):
         if request.user.is_authenticated and request.user.role == 'admin':
@@ -39,9 +41,21 @@ class IsStandard(BasePermission):
             return True
         return False
 
+class IsStandardAssignedToBranch(BasePermission):
+    def has_permission(self, request, view):
+        if request.user.is_authenticated and request.user.role == 'standard' and UserLocationAssignment.objects.filter(user=request.user,location__location_type='B').exists():
+            return True
+        return False
+
 class IsMechanic(BasePermission):
     def has_permission(self, request, view):
         if request.user.is_authenticated and request.user.role == 'mechanic':
+            return True
+        return False
+
+class IsMechanicAssignedToWorkshop(BasePermission):
+    def has_permission(self, request, view):
+        if request.user.is_authenticated and request.user.role == 'mechanic' and UserLocationAssignment.objects.filter(user=request.user,location__location_type='W').exists():
             return True
         return False
 

@@ -25,5 +25,5 @@ urlpatterns = [
     path('failure-reports/dismiss/',views.FailureReportDismissedAPIView.as_view(), name='failure-report-dismiss'),
     path('repair-reports/',views.RepairReportListAPIView.as_view(), name='repair-report-list'),
     path('repair-reports/<uuid:pk>/',views.RepairReportRetrieveUpdateAPIView.as_view(), name='repair-report-detail'),
-    path('repair-reports/current',views.CurrentRepairReportsInWorkshopListAPIView.as_view(), name='current-repair-report-list'),
+    path('repair-reports/my-workshop',views.CurrentRepairReportsInWorkshopListAPIView.as_view(), name='current-repair-report-list'),
 ]

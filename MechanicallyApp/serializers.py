@@ -371,7 +371,7 @@ class VehicleCreateUpdateSerializer(serializers.ModelSerializer):
 
     #TODO:należy przetestować po zaimplementowaniu widoków z FailureReport
     def update(self, instance, validated_data):
-        if FailureReport.objects.filter(vehicle_id=instance.id,status__in=['P','A']).exists() and validated_data.get('availability')=='A':
+        if FailureReport.objects.filter(vehicle_id=instance.id,status__in=['P','A','S']).exists() and validated_data.get('availability')=='A':
             raise serializers.ValidationError('Vehicle has been reported as failure. It cannot be set as available.')
         instance.vin=validated_data.get('vin', instance.vin)
         instance.kilometers=validated_data.get('kilometers', instance.kilometers)
@@ -415,6 +415,7 @@ class FailureReportListSerializer(serializers.ModelSerializer):
         read_only_fields=['id','title','vehicle','status','report_date']
 
 class FailureReportInfoForRepairReportSerializer(serializers.ModelSerializer):
+    vehicle=VehicleRetrieveSerializer(read_only=True)
     class Meta:
         model=FailureReport
         fields=['id','title','vehicle','description','status','report_date']
