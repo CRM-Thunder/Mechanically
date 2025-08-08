@@ -394,7 +394,7 @@ class FailureReportCreateSerializer(serializers.ModelSerializer):
         author_branch=UserLocationAssignment.objects.get(user=self.context.get('request').user).location
         if value.location!=author_branch:
             raise NotFound('There is no vehicle with provided ID assigned to your branch.')
-        if FailureReport.objects.filter(vehicle_id=value.id,status__in=['P','A','S']).exists():
+        if FailureReport.objects.filter(vehicle=value,status__in=['P','A','S']).exists():
             raise serializers.ValidationError('Vehicle is already reported as failure.')
         return value
 
@@ -403,8 +403,8 @@ class FailureReportCreateSerializer(serializers.ModelSerializer):
         vehicle.availability='U'
         description=validated_data.get('description')
         vehicle.save()
-        FailureReport.objects.create(vehicle=vehicle,description=description,status='P', report_author=self.context.get('request').user)
-        return "Report has been successfully created. Technical staff will take care of the vehicle as soon as possible."
+        instance = FailureReport.objects.create(vehicle=vehicle,description=description,status='P', report_author=self.context.get('request').user)
+        return instance
 
 
 class FailureReportListSerializer(serializers.ModelSerializer):
@@ -423,7 +423,6 @@ class FailureReportInfoForRepairReportSerializer(serializers.ModelSerializer):
 
 class FailureReportRetrieveSerializer(serializers.ModelSerializer):
     vehicle=VehicleRetrieveSerializer(read_only=True)
-    report_author=UserRetrieveSerializer(read_only=True)
     workshop=LocationSerializer(read_only=True)
     class Meta:
         model=FailureReport
@@ -434,10 +433,6 @@ class FailureReportAssignSerializer(serializers.Serializer):
     failure_report=serializers.PrimaryKeyRelatedField(queryset=FailureReport.objects.filter(workshop=None, status='P'),required=True)
     workshop=serializers.PrimaryKeyRelatedField(queryset=Location.objects.filter(location_type='W'),required=True)
     # TODO: upewnić się czy validate jest potrzebny skoro w PrimaryKeyRelatedField podaję sprecyzowany queryset
-    def validate_failure_report(self,value):
-        if value.status!='P':
-            raise serializers.ValidationError('Selected failure report is not in PENDING status.')
-
     def save(self):
         failure_report=self.validated_data['failure_report']
         workshop=self.validated_data['workshop']
@@ -445,14 +440,10 @@ class FailureReportAssignSerializer(serializers.Serializer):
         failure_report.status='A'
         failure_report.save()
         repair_report=RepairReport.objects.create(failure_report=failure_report,status='A',cost=0)
-        return {'failure_report':failure_report,'repair_report':repair_report}
+        return {'failure_report_id':failure_report.pk,'repair_report_id':repair_report.pk}
 
 class FailureReportDismissedSerializer(serializers.Serializer):
     failure_report=serializers.PrimaryKeyRelatedField(queryset=FailureReport.objects.filter(status='P'),required=True)
-    #TODO: upewnić się czy validate jest potrzebny skoro w PrimaryKeyRelatedField podaję sprecyzowany queryset
-    def validate_failure_report(self,value):
-        if value.status!='P':
-            raise serializers.ValidationError('Selected failure report is not in PENDING status.')
 
     def save(self):
         failure_report=self.validated_data['failure_report']

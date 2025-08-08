@@ -23,6 +23,7 @@ urlpatterns = [
     path('failure-reports/<uuid:pk>/',views.FailureReportRetrieveAPIView.as_view(), name='failure-report-detail'),
     path('failure-reports/assign/',views.FailureReportAssignPIView.as_view(), name='failure-report-assign'),
     path('failure-reports/dismiss/',views.FailureReportDismissedAPIView.as_view(), name='failure-report-dismiss'),
+    path('failure-reports/reassign/',views.FailureReportReassignAPIView.as_view(), name='failure-report-reassign'),
     path('repair-reports/',views.RepairReportListAPIView.as_view(), name='repair-report-list'),
     path('repair-reports/<uuid:pk>/',views.RepairReportRetrieveUpdateAPIView.as_view(), name='repair-report-detail'),
     path('repair-reports/my-workshop',views.CurrentRepairReportsInWorkshopListAPIView.as_view(), name='current-repair-report-list'),

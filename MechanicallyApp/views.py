@@ -120,13 +120,12 @@ class VehicleListCreateAPIView(generics.ListCreateAPIView):
 #TODO: przetestować to z mechanikiem, możliwe błędy semantyczne
     def get_queryset(self):
         qs = super().get_queryset()
-        if self.request.method.lower() == 'get':
-            if self.request.user.role == 'standard':
-                standard_location = UserLocationAssignment.objects.get(user=self.request.user).location
-                return qs.filter(location=standard_location)
-            elif self.request.user.role == 'mechanic':
-                mechanic_location = UserLocationAssignment.objects.get(user=self.request.user).location
-                return qs.filter(failure_reports__workshop=mechanic_location)
+        if self.request.user.role == 'standard':
+            standard_location = UserLocationAssignment.objects.get(user=self.request.user).location
+            return qs.filter(location=standard_location)
+        elif self.request.user.role == 'mechanic':
+            mechanic_location = UserLocationAssignment.objects.get(user=self.request.user).location
+            return qs.filter(failure_reports__workshop=mechanic_location)
         return qs
 
 
@@ -147,16 +146,15 @@ class VehicleRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView)
         elif self.request.method.lower() in UNWANTED_HTTP_METHODS:
             self.permission_classes = [DisableUnwantedHTTPMethods]
         return super().get_permissions()
-
+#TODO: przerzucić na uprawnienia?
     def get_queryset(self):
         qs = super().get_queryset()
-        if self.request.method.lower() == 'get':
-            if self.request.user.role == 'standard':
-                standard_location = UserLocationAssignment.objects.get(user=self.request.user).location
-                return qs.filter(location=standard_location)
-            elif self.request.user.role == 'mechanic':
-                mechanic_location = UserLocationAssignment.objects.get(user=self.request.user).location
-                return qs.filter(failure_reports__workshop=mechanic_location)
+        if self.request.user.role == 'standard':
+            standard_location = UserLocationAssignment.objects.get(user=self.request.user).location
+            return qs.filter(location=standard_location)
+        elif self.request.user.role == 'mechanic':
+            mechanic_location = UserLocationAssignment.objects.get(user=self.request.user).location
+            return qs.filter(failure_reports__workshop=mechanic_location)
         return qs
 
 
@@ -236,17 +234,16 @@ class UserListCreateAPIView(generics.ListCreateAPIView):
     #mechanik oraz standard mogą wypisać współpracowników z lokacji, menadżer może wyświetlać standardy, mechaników i menadżerów, admin może wypisywać wszystkich poza superuserem, superuser wszystkich
     def get_queryset(self):
         qs = super().get_queryset()
-        if self.request.method.lower() == 'get':
-            if self.request.user.role == 'standard' or self.request.user.role == 'mechanic':
-                if UserLocationAssignment.objects.filter(user=self.request.user).exists():
-                    return qs.filter(user_location_assignment__location=UserLocationAssignment.objects.get(
-                        user=self.request.user).location)
-                else:
-                    return qs.filter(pk=self.request.user.pk)
-            elif self.request.user.role == 'manager':
-                return qs.exclude(role='admin')
-            elif self.request.user.role == 'admin' and self.request.user.is_superuser == False:
-                return qs.exclude(is_superuser=True)
+        if self.request.user.role == 'standard' or self.request.user.role == 'mechanic':
+            if UserLocationAssignment.objects.filter(user=self.request.user).exists():
+                return qs.filter(user_location_assignment__location=UserLocationAssignment.objects.get(
+                    user=self.request.user).location)
+            else:
+                return qs.filter(pk=self.request.user.pk)
+        elif self.request.user.role == 'manager':
+            return qs.exclude(role='admin')
+        elif self.request.user.role == 'admin' and self.request.user.is_superuser == False:
+            return qs.exclude(is_superuser=True)
         return qs
 
 
@@ -275,17 +272,16 @@ class UserRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
 
     def get_queryset(self):
         qs = super().get_queryset()
-        if self.request.method.lower() == 'get':
-            if self.request.user.role == 'standard' or self.request.user.role == 'mechanic':
-                if UserLocationAssignment.objects.filter(user=self.request.user).exists():
-                    return qs.filter(user_location_assignment__location=UserLocationAssignment.objects.get(
-                        user=self.request.user).location)
-                else:
-                    return qs.filter(pk=self.request.user.pk)
-            elif self.request.user.role == 'manager':
-                return qs.exclude(role='admin')
-            elif self.request.user.role == 'admin' and self.request.user.is_superuser == False:
-                return qs.exclude(is_superuser=True)
+        if self.request.user.role == 'standard' or self.request.user.role == 'mechanic':
+            if UserLocationAssignment.objects.filter(user=self.request.user).exists():
+                return qs.filter(user_location_assignment__location=UserLocationAssignment.objects.get(
+                    user=self.request.user).location)
+            else:
+                return qs.filter(pk=self.request.user.pk)
+        elif self.request.user.role == 'manager':
+            return qs.exclude(role='admin')
+        elif self.request.user.role == 'admin' and self.request.user.is_superuser == False:
+            return qs.exclude(is_superuser=True)
         return qs
 
 
@@ -302,13 +298,20 @@ class AssignUserToLocationAPIView(generics.CreateAPIView):
 
 
 class UnassignUserFromLocationAPIView(APIView):
-    def delete(self, request, user_id):
-        obj = get_object_or_404(UserLocationAssignment, user_id=user_id)
+    def post(self, request, user_id):
+        try:
+            user=User.objects.get(pk=user_id,role__in=('standard','mechanic'))
+        except User.DoesNotExist:
+            return Response({'result':'There is no standard user or mechanic user with provided ID.'},status=status.HTTP_404_NOT_FOUND)
+        try:
+            obj=UserLocationAssignment.objects.get(user_id=user_id)
+        except UserLocationAssignment.DoesNotExist:
+            return Response({'result':'User is not assigned to any location.'},status=status.HTTP_400_BAD_REQUEST)
         obj.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response({'result':'User has been unassigned successfully.'},status=status.HTTP_200_OK)
 
     def get_permissions(self):
-        if self.request.method.lower() == 'delete':
+        if self.request.method.lower() == 'post':
             self.permission_classes = [IsManager | IsAdmin]
         elif self.request.method.lower() in UNWANTED_HTTP_METHODS:
             self.permission_classes = [DisableUnwantedHTTPMethods]
@@ -446,24 +449,26 @@ class RelatedVehicleRepairReportsListAPIView(APIView):
             serializer = RepairReportListSerializer(repair_reports, many=True)
             return Response(serializer.data, status=status.HTTP_200_OK)
         else:
-            raise NotFound("There is no vehicle with provided id assigned to your workshop.")
+            raise NotFound("There is no vehicle with provided id assigned to repair in your workshop.")
 
 #TODO: dokładnie wytestować wybór queryseta
 class RepairReportRetrieveUpdateAPIView(generics.RetrieveUpdateAPIView):
-    # TODO: dostosować do specyficznych uprawnień mechanika
     queryset = RepairReport.objects.all()
     serializer_class = RepairReportRetrieveUpdateSerializer
-
+#TODO:przerzucić odpowiedzialność na klasy uprawnień? Object permissions będą sprawdzane przy retrieve/put w przeciwieństwie do listowania powyżej
     def get_queryset(self):
         qs=super().get_queryset()
-        if self.request.method.lower() in ('get','head') and self.request.user.role == 'mechanic':
+        if self.request.user.role == 'mechanic':
             mechanic_workshop = get_object_or_404(UserLocationAssignment, user=self.request.user).location
-            pk=self.kwargs.get('pk')
-            vehicle_id=RepairReport.objects.get(pk=pk).failure_report.vehicle.id
-            if RepairReport.objects.filter(failure_report__vehicle_id=vehicle_id, failure_report__workshop=mechanic_workshop, status__in=['A', 'R']).exists():
-                return qs.filter(Q(failure_report__workshop=mechanic_workshop) | Q(failure_report__vehicle_id=vehicle_id, status='H'))
-            else:
-                return qs.filter(failure_report__workshop=mechanic_workshop)
+            if self.request.method.lower() in ('get','head'):
+                pk=self.kwargs.get('pk')
+                vehicle_id=RepairReport.objects.get(pk=pk).failure_report.vehicle.id
+                if RepairReport.objects.filter(failure_report__vehicle_id=vehicle_id, failure_report__workshop=mechanic_workshop, status__in=['A', 'R']).exists():
+                    return qs.filter(Q(failure_report__workshop=mechanic_workshop) | Q(failure_report__vehicle_id=vehicle_id, status='H'))
+                else:
+                    return qs.filter(failure_report__workshop=mechanic_workshop)
+            elif self.request.method.lower() in ('put', 'patch'):
+                return qs.filter(failure_report__workshop=mechanic_workshop, status__in=['A', 'R'])
         return qs
 
     # TODO: stworzyć nowy rodzaj uprawnień dla mechanika przypisanego do danego warsztatu
