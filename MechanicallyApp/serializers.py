@@ -12,7 +12,7 @@ from .generators import generate_username, generate_random_password
 from .mail_services import send_activation_email, send_reset_password_email
 
 #serializer służący do wypisywania, dodawania oraz aktualizowania Location
-class LocationSerializer(serializers.ModelSerializer):
+class LocationCreateRetrieveSerializer(serializers.ModelSerializer):
     location_type=serializers.CharField(max_length=1)
     class Meta:
         model = Location
@@ -28,19 +28,35 @@ class LocationSerializer(serializers.ModelSerializer):
         return value
 
     def validate_location_type(self, value):
-        if self.instance and value!=self.instance.location_type:
-            raise serializers.ValidationError('Location type cannot be changed')
         # noinspection PyUnresolvedReferences
         valid_location_types = [choice[0] for choice in Location.LocationTypeChoices.choices]
         if value not in valid_location_types:
             raise serializers.ValidationError('Location type must be one of the following: %s' % ', '.join(valid_location_types))
         return value
 
+class LocationListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Location
+        fields = ['id','name','location_type']
+        read_only_fields = ['id','name','location_type']
 
+class LocationUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Location
+        fields = ['id','name','phone_number','email','address']
+        read_only_fields = ['id']
+
+    def validate_name(self, value):
+        location_name_validator(value)
+        return value
+
+    def validate_phone_number(self,value):
+        phone_number_validator(value)
+        return value
 
 #serializer służący do wyświetlania informacji o przydziale z poziomu UserSerializer
 class UserLocationAssignmentForUserSerializer(serializers.ModelSerializer):
-    location=LocationSerializer(read_only=True)
+    location=LocationCreateRetrieveSerializer(read_only=True)
     class Meta:
         model = UserLocationAssignment
         fields = ['location','assign_date']
@@ -112,7 +128,8 @@ class UserListSerializer(serializers.ModelSerializer):
 class UserUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['first_name','last_name','email','phone_number', 'role']
+        fields = ['id','first_name','last_name','email','phone_number', 'role']
+        read_only_fields = ['id']
 
     def validate_first_name(self, value):
         first_name_validator(value)
@@ -192,7 +209,7 @@ class AccountActivationSerializer(serializers.Serializer):
         try:
             validate_password(password, user)
         except DjangoValidationError as err:
-            raise serializers.ValidationError({'passwords':err.messages})
+            raise serializers.ValidationError({'password':err.messages})
 
         if password != confirm_password:
             raise serializers.ValidationError('Passwords do not match.')
@@ -297,7 +314,7 @@ class UserLocationAssignmentSerializer(serializers.ModelSerializer):
 
 #serializer służący do wypisania informacji o lokacji mechanika/standarda
 class UserNestedLocationAssignmentSerializer(serializers.ModelSerializer):
-    location=LocationSerializer(read_only=True)
+    location=LocationCreateRetrieveSerializer(read_only=True)
     class Meta:
         model = UserLocationAssignment
         fields = ['location','assign_date']
@@ -306,7 +323,7 @@ class UserNestedLocationAssignmentSerializer(serializers.ModelSerializer):
 #serializer do wypisywania wszystkich informacji o pojeździe
 class VehicleRetrieveSerializer(serializers.ModelSerializer):
     manufacturer=ManufacturerSerializer(read_only=True)
-    branch=LocationSerializer(read_only=True)
+    branch=LocationCreateRetrieveSerializer(read_only=True)
     class Meta:
         model=Vehicle
         fields='__all__'
@@ -366,7 +383,7 @@ class VehicleCreateUpdateSerializer(serializers.ModelSerializer):
         availability_choices = [choice[0] for choice in Vehicle.AvailabilityChoices.choices]
         if value not in availability_choices:
             raise serializers.ValidationError(
-                'Location type must be one of the following: %s' % ', '.join(availability_choices))
+                'Availability type must be one of the following: %s' % ', '.join(availability_choices))
         return value
 
     #TODO:należy przetestować po zaimplementowaniu widoków z FailureReport
@@ -386,11 +403,17 @@ class VehicleCreateUpdateSerializer(serializers.ModelSerializer):
         return instance
 
 class FailureReportCreateSerializer(serializers.ModelSerializer):
+    vehicle=serializers.UUIDField(required=True)
     class Meta:
         model=FailureReport
         fields=['vehicle','description']
 
     def validate_vehicle(self,value):
+        try:
+            vehicle=Vehicle.objects.get(pk=value)
+        except Vehicle.DoesNotExist:
+            raise NotFound('There is no vehicle with provided ID assigned to your branch.')
+        value=vehicle
         author_branch=UserLocationAssignment.objects.get(user=self.context.get('request').user).location
         if value.location!=author_branch:
             raise NotFound('There is no vehicle with provided ID assigned to your branch.')
@@ -423,7 +446,7 @@ class FailureReportInfoForRepairReportSerializer(serializers.ModelSerializer):
 
 class FailureReportRetrieveSerializer(serializers.ModelSerializer):
     vehicle=VehicleRetrieveSerializer(read_only=True)
-    workshop=LocationSerializer(read_only=True)
+    workshop=LocationCreateRetrieveSerializer(read_only=True)
     class Meta:
         model=FailureReport
         fields='__all__'

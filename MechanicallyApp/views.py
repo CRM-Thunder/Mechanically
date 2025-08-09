@@ -1,7 +1,8 @@
 from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 from .models import Manufacturer, Location, UserLocationAssignment, Vehicle, User, FailureReport, RepairReport
-from .serializers import ManufacturerSerializer, LocationSerializer, UserNestedLocationAssignmentSerializer, \
+from .serializers import ManufacturerSerializer, LocationCreateRetrieveSerializer, \
+    UserNestedLocationAssignmentSerializer, \
     VehicleCreateUpdateSerializer, VehicleRetrieveSerializer, VehicleListSerializer, AccountActivationSerializer, \
     UserCreateSerializer, UserListSerializer, UserUpdateSerializer, ResetPasswordSerializer, \
     ResetPasswordRequestSerializer, \
@@ -9,7 +10,7 @@ from .serializers import ManufacturerSerializer, LocationSerializer, UserNestedL
     FailureReportListSerializer, \
     FailureReportRetrieveSerializer, FailureReportAssignSerializer, FailureReportDismissedSerializer, \
     FailureReportReassignSerializer, \
-    RepairReportRetrieveUpdateSerializer, RepairReportListSerializer
+    RepairReportRetrieveUpdateSerializer, RepairReportListSerializer, LocationUpdateSerializer, LocationListSerializer
 from rest_framework import generics, status
 from rest_framework.views import APIView
 from .permissions import IsManager, IsAdmin, IsMechanic, DisableUnwantedHTTPMethods, \
@@ -54,7 +55,10 @@ class ManufacturerRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPI
 #wypisywać wszystkie lokalizacje może menadżer i admin
 class LocationListCreateAPIView(generics.ListCreateAPIView):
     queryset = Location.objects.all()
-    serializer_class = LocationSerializer
+    def get_serializer_class(self):
+        if self.request.method.lower()=='post':
+            return LocationCreateRetrieveSerializer
+        return LocationListSerializer
 
     def get_permissions(self):
         if self.request.method.lower() in ('get','head'):
@@ -68,7 +72,11 @@ class LocationListCreateAPIView(generics.ListCreateAPIView):
 
 class LocationRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Location.objects.all()
-    serializer_class = LocationSerializer
+
+    def get_serializer_class(self):
+        if self.request.method.lower() in ('put','patch','delete'):
+            return LocationUpdateSerializer
+        return LocationCreateRetrieveSerializer
 
     def get_permissions(self):
         if self.request.method.lower() in ('get','head'):

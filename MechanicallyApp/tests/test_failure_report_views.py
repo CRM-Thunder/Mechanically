@@ -133,6 +133,17 @@ class FailureReportTestCase(TestCase):
             location=self.branch2,
             manufacturer=self.man
         )
+        self.vehicle5 = Vehicle.objects.create(
+            vin='5GZCZ63B93S896594',
+            kilometers=5070,
+            vehicle_type='CO',
+            year=2020,
+            vehicle_model="Lion Gate",
+            fuel_type='D',
+            availability='U',
+            location=self.branch,
+            manufacturer=self.man
+        )
 
         # Assign users to locations
         UserLocationAssignment.objects.create(user=self.standard, location=self.branch)
@@ -165,14 +176,14 @@ class FailureReportTestCase(TestCase):
         )
 
         # Create repair report for the assigned failure
-        self.repair_report = RepairReport.objects.create(
+        self.repair_report1 = RepairReport.objects.create(
             failure_report=self.failure_report2,
             condition_analysis="Initial analysis",
             repair_action="Pending repair",
             cost=100.00,
             status='A'  # ACTIVE
         )
-        self.repair_report = RepairReport.objects.create(
+        self.repair_report2 = RepairReport.objects.create(
             failure_report=self.failure_report3,
             condition_analysis="Historical analysis",
             repair_action="Historical repair",
@@ -187,11 +198,33 @@ class FailureReportTestCase(TestCase):
             "vehicle": self.vehicle2.pk,
             "description": "Test failure description"
         })
-        print(response.json())
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         # Check that vehicle availability was updated to Unavailable
         vehicle = Vehicle.objects.get(id=self.vehicle2.id)
         self.assertEqual(vehicle.availability, 'U')
+
+    def test_failure_report_cannot_be_created_for_non_existing_vehicle(self):
+        client = APIClient()
+        client.force_authenticate(self.standard)
+        response = client.post(reverse('failure-report-list'), data={
+            "vehicle": 'b54d7467-2eaa-4e1b-8be2-3fb091d7639e',
+            "description": "Test failure description"
+        })
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertIn('There is no vehicle with provided ID assigned to your branch.',str(response.json()))
+
+    def test_standard_user_can_create_failure_report_for_unavailable_vehicle_but_without_current_failure_report(self):
+        client = APIClient()
+        client.force_authenticate(self.standard)
+        response = client.post(reverse('failure-report-list'), data={
+            "vehicle": self.vehicle5.pk,
+            "description": "Test failure description"
+        })
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        # Check that vehicle availability was updated to Unavailable
+        vehicle = Vehicle.objects.get(id=self.vehicle5.id)
+        self.assertEqual(vehicle.availability, 'U')
+
 
     def test_unassigned_standard_cannot_create_failure_report(self):
         client = APIClient()
