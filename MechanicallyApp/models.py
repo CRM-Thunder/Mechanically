@@ -4,10 +4,10 @@ from django.contrib.auth.models import AbstractUser
 import uuid
 class User(AbstractUser):
     ROLE_CHOICES=(
-        ('standard','Standard'),
-        ('mechanic','Mechanic'),
-        ('manager','Manager'),
-        ('admin','Administrator')
+        ('standard','standard'),
+        ('mechanic','mechanic'),
+        ('manager','manager'),
+        ('admin','administrator')
     )
     role=models.CharField(max_length=10,choices=ROLE_CHOICES,default='standard')
     id=models.UUIDField(primary_key=True,default=uuid.uuid4,editable=False)

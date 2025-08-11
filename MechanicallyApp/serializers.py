@@ -183,7 +183,6 @@ class UserRetrieveSerializer(serializers.ModelSerializer):
         fields=super().get_fields()
         if self.instance.role in ['standard','mechanic']:
             fields['user_location_assignment']=UserLocationAssignmentForUserSerializer(read_only=True)
-        #TODO: ewentualnie zamienić na dodawanie pól, trzeba sprawdzić jak podawać źródło danych dla nich
         if not request.user.is_superuser:
             fields.pop('is_superuser')
             fields.pop('is_active')
@@ -267,7 +266,7 @@ class ResetPasswordSerializer(serializers.Serializer):
         user = get_object_or_404(User, id=user_id, is_active=True)
         user.set_password(self.validated_data['password'])
         user.save()
-        return "Password has been successfully changed. You can now login with your new credentials."
+        return "Password has been changed."
 
 
 #serializer służący do wypisywania, dodawania oraz aktualizowania Manufacturer
@@ -406,7 +405,7 @@ class FailureReportCreateSerializer(serializers.ModelSerializer):
     vehicle=serializers.UUIDField(required=True)
     class Meta:
         model=FailureReport
-        fields=['vehicle','description']
+        fields=['vehicle','title','description']
 
     def validate_vehicle(self,value):
         try:
@@ -414,19 +413,22 @@ class FailureReportCreateSerializer(serializers.ModelSerializer):
         except Vehicle.DoesNotExist:
             raise NotFound('There is no vehicle with provided ID assigned to your branch.')
         value=vehicle
-        author_branch=UserLocationAssignment.objects.get(user=self.context.get('request').user).location
-        if value.location!=author_branch:
+        user_location_id=UserLocationAssignment.objects.filter(user_id=self.context.get('request').user.id).values_list('location_id',flat=True).first()
+        if user_location_id is None:
+            raise NotFound('You are not assigned to any branch.')
+        if value.location.id!=user_location_id:
             raise NotFound('There is no vehicle with provided ID assigned to your branch.')
-        if FailureReport.objects.filter(vehicle=value,status__in=['P','A','S']).exists():
+        if FailureReport.objects.filter(vehicle_id=value.id,status__in=['P','A','S']).exists():
             raise serializers.ValidationError('Vehicle is already reported as failure.')
         return value
 
     def create(self, validated_data):
         vehicle=validated_data.get('vehicle')
         vehicle.availability='U'
+        title=validated_data.get('title')
         description=validated_data.get('description')
         vehicle.save()
-        instance = FailureReport.objects.create(vehicle=vehicle,description=description,status='P', report_author=self.context.get('request').user)
+        instance = FailureReport.objects.create(vehicle=vehicle,title=title,description=description,status='P', report_author=self.context.get('request').user)
         return instance
 
 
@@ -472,7 +474,7 @@ class FailureReportDismissedSerializer(serializers.Serializer):
         failure_report=self.validated_data['failure_report']
         failure_report.status='D'
         failure_report.save()
-        return "Report has been successfully dismissed."
+        return "Report has been dismissed."
 
 class FailureReportReassignSerializer(serializers.Serializer):
     failure_report = serializers.PrimaryKeyRelatedField(queryset=FailureReport.objects.filter( status__in=['A','S']), required=True)
@@ -484,7 +486,7 @@ class FailureReportReassignSerializer(serializers.Serializer):
         failure_report.workshop = workshop
         failure_report.status = 'A'
         failure_report.save()
-        return "Report has been successfully reassigned to selected workshop."
+        return "Report has been reassigned to provided workshop."
 
 class RepairReportRetrieveUpdateSerializer(serializers.ModelSerializer):
     failure_report=FailureReportInfoForRepairReportSerializer(read_only=True)

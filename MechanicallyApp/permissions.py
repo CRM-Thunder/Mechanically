@@ -59,12 +59,6 @@ class IsMechanicAssignedToWorkshop(BasePermission):
             return True
         return False
 
-class DisableUnwantedHTTPMethods(BasePermission):
-    def has_permission(self, request, view):
-        if request.method.lower() in ('options','trace','connect'):
-            raise MethodNotAllowed(method=request.method.upper())
-        return True
-
 class IsAccountOwner(BasePermission):
     def has_permission(self, request, view):
         return request.user.is_authenticated

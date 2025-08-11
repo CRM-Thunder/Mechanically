@@ -195,6 +195,7 @@ class FailureReportTestCase(TestCase):
         client = APIClient()
         client.force_authenticate(self.standard)
         response = client.post(reverse('failure-report-list'), data={
+            "title":'zero tituli',
             "vehicle": self.vehicle2.pk,
             "description": "Test failure description"
         })
@@ -217,6 +218,7 @@ class FailureReportTestCase(TestCase):
         client = APIClient()
         client.force_authenticate(self.standard)
         response = client.post(reverse('failure-report-list'), data={
+            "title": 'zero tituli',
             "vehicle": self.vehicle5.pk,
             "description": "Test failure description"
         })

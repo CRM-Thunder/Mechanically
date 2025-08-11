@@ -94,7 +94,7 @@ class UserLocationAssignmentTestCase(TestCase):
         client.force_authenticate(self.admin)
         response = client.post(reverse('user-unassign',kwargs={'user_id':self.standard1.pk}))
         assert response.status_code == status.HTTP_200_OK
-        self.assertIn('User has been unassigned successfully.',str(response.json()))
+        self.assertIn('User has been unassigned.',str(response.json()))
         self.assertEqual(UserLocationAssignment.objects.filter(user=self.standard1,location=self.branch1).count(),0)
 
     def test_admin_can_unassign_assigned_mechanic_from_workshop(self):
@@ -102,7 +102,7 @@ class UserLocationAssignmentTestCase(TestCase):
         client.force_authenticate(self.admin)
         response = client.post(reverse('user-unassign',kwargs={'user_id':self.mechanic1.pk}))
         assert response.status_code == status.HTTP_200_OK
-        self.assertIn('User has been unassigned successfully.',str(response.json()))
+        self.assertIn('User has been unassigned.',str(response.json()))
         self.assertEqual(UserLocationAssignment.objects.filter(user=self.mechanic1,location=self.workshop1).count(),0)
 
     def test_manager_can_unassign_assigned_standard_from_branch(self):
@@ -110,7 +110,7 @@ class UserLocationAssignmentTestCase(TestCase):
         client.force_authenticate(self.manager)
         response = client.post(reverse('user-unassign',kwargs={'user_id':self.standard1.pk}))
         assert response.status_code == status.HTTP_200_OK
-        self.assertIn('User has been unassigned successfully.',str(response.json()))
+        self.assertIn('User has been unassigned.',str(response.json()))
         self.assertEqual(UserLocationAssignment.objects.filter(user=self.standard1,location=self.branch1).count(),0)
 
     def test_manager_can_unassign_assigned_mechanic_from_workshop(self):
@@ -118,7 +118,7 @@ class UserLocationAssignmentTestCase(TestCase):
         client.force_authenticate(self.manager)
         response = client.post(reverse('user-unassign',kwargs={'user_id':self.mechanic1.pk}))
         assert response.status_code == status.HTTP_200_OK
-        self.assertIn('User has been unassigned successfully.',str(response.json()))
+        self.assertIn('User has been unassigned.',str(response.json()))
         self.assertEqual(UserLocationAssignment.objects.filter(user=self.mechanic1,location=self.workshop1).count(),0)
 
     def test_unassigned_standard_user_and_mechanic_user_cannot_be_unassigned(self):
