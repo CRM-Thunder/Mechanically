@@ -35,6 +35,9 @@ class FailureReportTestCase(TestCase):
         self.standard2 = User.objects.create_user(first_name="Krzysztof", last_name="Pawlak", username="krzpaw1111",
                                                   email="testowy22@gmail.com", password="test1234", role="standard",
                                                   phone_number="444444444")
+        self.standard3 = User.objects.create_user(first_name="Arnold", last_name="Wasp", username="arnwas1111",
+                                                  email="testowy2123122@gmail.com", password="test1234", role="standard",
+                                                  phone_number="444414444")
 
         self.manager = User.objects.create_user(
             first_name="Szymon",
@@ -54,6 +57,15 @@ class FailureReportTestCase(TestCase):
             password="test1234",
             role="mechanic",
             phone_number="987654324"
+        )
+        self.mechanic2 = User.objects.create_user(
+            first_name="Donald",
+            last_name="Kaczynski",
+            username="donkac1111",
+            email="testowy12524@gmail.com",
+            password="test1234",
+            role="mechanic",
+            phone_number="441144114"
         )
 
         # Create manufacturers
@@ -82,6 +94,13 @@ class FailureReportTestCase(TestCase):
             phone_number='133456789',
             email="test2@gmail.com",
             address="Testowa 2 Gdynia",
+            location_type='W'
+        )
+        self.workshop2 = Location.objects.create(
+            name='WARSZTAT B',
+            phone_number='544333222',
+            email="test25323@gmail.com",
+            address="Testowa 10 Gdynia",
             location_type='W'
         )
 
@@ -148,6 +167,7 @@ class FailureReportTestCase(TestCase):
         # Assign users to locations
         UserLocationAssignment.objects.create(user=self.standard, location=self.branch)
         UserLocationAssignment.objects.create(user=self.mechanic, location=self.workshop)
+        UserLocationAssignment.objects.create(user=self.mechanic2, location=self.workshop2)
 
         # Create failure reports
         self.failure_report1 = FailureReport.objects.create(
@@ -427,20 +447,13 @@ class FailureReportTestCase(TestCase):
 
     def test_manager_can_reassign_failure_report(self):
         # Create another workshop
-        workshop2 = Location.objects.create(
-            name='WARSZTAT 2',
-            phone_number='143456789',
-            email="test4@gmail.com",
-            address="Testowa 3 Gdynia",
-            location_type='W'
-        )
 
         client = APIClient()
         client.force_authenticate(self.manager)
 
         response = client.post(reverse('failure-report-reassign'), data={
             "failure_report": str(self.failure_report2.id),
-            "workshop": str(workshop2.id)
+            "workshop": str(self.workshop2.id)
         })
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -448,24 +461,38 @@ class FailureReportTestCase(TestCase):
         # Check that failure report was updated
         failure_report = FailureReport.objects.get(id=self.failure_report2.id)
         self.assertEqual(failure_report.status, 'A')  # ASSIGNED
-        self.assertEqual(failure_report.workshop, workshop2)
+        self.assertEqual(failure_report.workshop, self.workshop2)
 
     def test_standard_user_cannot_reassign_failure_report(self):
         # Create another workshop
-        workshop2 = Location.objects.create(
-            name='WARSZTAT 2',
-            phone_number='143456789',
-            email="test4@gmail.com",
-            address="Testowa 3 Gdynia",
-            location_type='W'
-        )
 
         client = APIClient()
         client.force_authenticate(self.standard)
 
         response = client.post(reverse('failure-report-reassign'), data={
             "failure_report": str(self.failure_report2.id),
-            "workshop": str(workshop2.id)
+            "workshop": str(self.workshop2.id)
         })
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+
+    def test_manager_cannot_reassign_pending_failure_report(self):
+        client=APIClient()
+        client.force_authenticate(self.manager)
+        response = client.post(reverse('failure-report-reassign'), data={
+            "failure_report": str(self.failure_report1.id),
+            "workshop": str(self.workshop2.id)
+        })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('Cannot reassign pending failure report.', str(response.json()))
+
+    def test_manager_cannot_reassign_non_existent_failure_report(self):
+        client=APIClient()
+        client.force_authenticate(self.manager)
+        response = client.post(reverse('failure-report-reassign'), data={
+            "failure_report": '5f35a175-73bb-44ac-b007-bb1d7ff3f13b',
+            "workshop": str(self.workshop2.id)
+        })
+        print(response.json())
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)

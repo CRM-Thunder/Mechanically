@@ -23,13 +23,7 @@ class User(AbstractUser):
     phone_number=models.CharField(max_length=9, unique=True, validators=[MinLengthValidator(9)])
     REQUIRED_FIELDS = ['email','first_name','last_name']
     def __str__(self):
-        return self.username
-
-    def get_full_name(self):
         return self.first_name + " " + self.last_name
-
-    def get_short_name(self):
-        return self.first_name
 
 class Location(models.Model):
     class LocationTypeChoices(models.TextChoices):

@@ -2,7 +2,6 @@ from django.contrib.auth.tokens import default_token_generator
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
-from rest_framework.generics import get_object_or_404
 from rest_framework.exceptions import PermissionDenied, NotFound
 from rest_framework.validators import UniqueValidator
 
@@ -13,7 +12,7 @@ from .mail_services import send_activation_email, send_reset_password_email
 
 #serializer służący do wypisywania, dodawania oraz aktualizowania Location
 class LocationCreateRetrieveSerializer(serializers.ModelSerializer):
-    location_type=serializers.CharField(max_length=1)
+    location_type=serializers.CharField(max_length=1, required=True)
     class Meta:
         model = Location
         fields = '__all__'
@@ -64,7 +63,7 @@ class UserLocationAssignmentForUserSerializer(serializers.ModelSerializer):
 
 #serializer służący do tworzenia użytkownika
 class UserCreateSerializer(serializers.ModelSerializer):
-    role=serializers.CharField(max_length=8)
+    role=serializers.CharField(max_length=8,required=True)
     class Meta:
         model = User
         fields = ['id','first_name','last_name','email','phone_number', 'role']
@@ -155,7 +154,7 @@ class UserUpdateSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError('Admin users cannot be changed to other roles.')
 
             if UserLocationAssignment.objects.filter(user=instance).exists():
-                raise serializers.ValidationError('Users with assigned locations cannot be changed to other roles. Please unassign user from location first.')
+                raise serializers.ValidationError('Users with assigned locations cannot be changed to other roles.')
 
         if instance.first_name != validated_data.get('first_name', instance.first_name) or instance.last_name != validated_data.get('last_name', instance.last_name):
             instance.first_name = validated_data.get('first_name', instance.first_name)
@@ -191,80 +190,81 @@ class UserRetrieveSerializer(serializers.ModelSerializer):
         return fields
 
 class AccountActivationSerializer(serializers.Serializer):
-    id=serializers.UUIDField()
+    user=serializers.UUIDField(write_only=True,required=True)
     token = serializers.CharField(max_length=100)
     password = serializers.CharField(max_length=128)
     confirm_password=serializers.CharField(max_length=128)
 
+    _user_instance=None
     def validate(self, data):
-        user_id = data['id']
-        user=get_object_or_404(User, id=user_id, is_active=False)
-        token = data['token']
-        password = data['password']
-        confirm_password = data['confirm_password']
-        if not default_token_generator.check_token(user, token):
-            raise serializers.ValidationError('Invalid token.')
+        user_id = data.get('user')
+        token = data.get('token')
+        password = data.get('password')
+        confirm_password = data.get('confirm_password')
+        user=User.objects.filter(pk=user_id, is_active=False).first()
+        if user is None or not default_token_generator.check_token(user, token):
+            raise serializers.ValidationError('Invalid user or token.')
+
+        if password != confirm_password:
+            raise serializers.ValidationError('Passwords do not match.')
 
         try:
             validate_password(password, user)
         except DjangoValidationError as err:
             raise serializers.ValidationError({'password':err.messages})
 
-        if password != confirm_password:
-            raise serializers.ValidationError('Passwords do not match.')
-
+        self._user_instance=user
         return data
 
     def save(self):
-        user_id = self.validated_data['id']
-        user=get_object_or_404(User, id=user_id, is_active=False)
-        user.set_password(self.validated_data['password'])
+        user=self._user_instance
+        user.set_password(self.validated_data.get('password'))
         user.is_active=True
         user.save()
         return "Account has been activated."
 
 class ResetPasswordRequestSerializer(serializers.Serializer):
-    email = serializers.EmailField()
+    email = serializers.EmailField(required=True)
 
     def save(self):
-        email = self.validated_data['email']
-        try:
-            user = User.objects.get(email=email)
-        except User.DoesNotExist:
+        email = self.validated_data.get('email')
+        user = User.objects.filter(email=email, is_active=True).first()
+        print(user)
+        if user is None:
             return "If an account with provided email exists, password reset link has been sent to provided email address."
         token = default_token_generator.make_token(user)
         send_reset_password_email(user, token=token)
         return "If an account with provided email exists, password reset link has been sent to provided email address."
 
 class ResetPasswordSerializer(serializers.Serializer):
-    id = serializers.UUIDField()
+    user = serializers.UUIDField(write_only=True, required=True)
     token = serializers.CharField(max_length=100)
     password = serializers.CharField(max_length=128)
     confirm_password = serializers.CharField(max_length=128)
+    _user_instance = None
 
     def validate(self, data):
-        user_id = data['id']
-        user = get_object_or_404(User, id=user_id, is_active=True)
-        token = data['token']
-        password = data['password']
-        confirm_password = data['confirm_password']
-        if not default_token_generator.check_token(user, token):
-            raise serializers.ValidationError('Invalid token.')
-
-        try:
-            validate_password(password, user)
-        except DjangoValidationError as err:
-            raise serializers.ValidationError({'passwords': err.messages})
+        user_id = data.get('user')
+        token = data.get('token')
+        password = data.get('password')
+        confirm_password = data.get('confirm_password')
+        user = User.objects.filter(pk=user_id, is_active=True).first()
+        if user is None or not default_token_generator.check_token(user, token):
+            raise serializers.ValidationError('Invalid user or token.')
 
         if password != confirm_password:
             raise serializers.ValidationError('Passwords do not match.')
+        try:
+            validate_password(password, user)
+        except DjangoValidationError as err:
+            raise serializers.ValidationError({'password': err.messages})
 
+        self._user_instance = user
         return data
 
     def save(self):
-        user_id = self.validated_data['id']
-        user = get_object_or_404(User, id=user_id, is_active=True)
-        user.set_password(self.validated_data['password'])
+        user = self._user_instance
+        user.set_password(self.validated_data.get('password'))
         user.save()
         return "Password has been changed."
 
@@ -385,7 +385,6 @@ class VehicleCreateUpdateSerializer(serializers.ModelSerializer):
                 'Availability type must be one of the following: %s' % ', '.join(availability_choices))
         return value
 
-    #TODO:należy przetestować po zaimplementowaniu widoków z FailureReport
     def update(self, instance, validated_data):
         if FailureReport.objects.filter(vehicle_id=instance.id,status__in=['P','A','S']).exists() and validated_data.get('availability')=='A':
             raise serializers.ValidationError('Vehicle has been reported as failure. It cannot be set as available.')
@@ -409,10 +408,9 @@ class FailureReportCreateSerializer(serializers.ModelSerializer):
 
     def validate_vehicle(self,value):
         try:
-            vehicle=Vehicle.objects.get(pk=value)
+            value=Vehicle.objects.get(pk=value)
         except Vehicle.DoesNotExist:
             raise NotFound('There is no vehicle with provided ID assigned to your branch.')
-        value=vehicle
         user_location_id=UserLocationAssignment.objects.filter(user_id=self.context.get('request').user.id).values_list('location_id',flat=True).first()
         if user_location_id is None:
             raise NotFound('You are not assigned to any branch.')
@@ -455,9 +453,20 @@ class FailureReportRetrieveSerializer(serializers.ModelSerializer):
         read_only_fields=['id','title','vehicle','description','workshop','report_date','report_author','status','last_status_change_date']
 
 class FailureReportAssignSerializer(serializers.Serializer):
-    failure_report=serializers.PrimaryKeyRelatedField(queryset=FailureReport.objects.filter(workshop=None, status='P'),required=True)
-    workshop=serializers.PrimaryKeyRelatedField(queryset=Location.objects.filter(location_type='W'),required=True)
-    # TODO: upewnić się czy validate jest potrzebny skoro w PrimaryKeyRelatedField podaję sprecyzowany queryset
+    failure_report=serializers.PrimaryKeyRelatedField(queryset=FailureReport.objects.all(),required=True)
+    workshop=serializers.PrimaryKeyRelatedField(queryset=Location.objects.all(),required=True)
+    def validate_failure_report(self,value):
+        if value.status!='P':
+            raise serializers.ValidationError('Failure report is not in PENDING status.')
+        if value.workshop is not None:
+            raise serializers.ValidationError('Failure report has already been assigned to a workshop.')
+        return value
+
+    def validate_workshop(self,value):
+        if value.location_type!='W':
+            raise serializers.ValidationError('Provided location is not a workshop.')
+        return value
+
     def save(self):
         failure_report=self.validated_data['failure_report']
         workshop=self.validated_data['workshop']
@@ -468,7 +477,12 @@ class FailureReportAssignSerializer(serializers.Serializer):
         return {'failure_report_id':failure_report.pk,'repair_report_id':repair_report.pk}
 
 class FailureReportDismissedSerializer(serializers.Serializer):
-    failure_report=serializers.PrimaryKeyRelatedField(queryset=FailureReport.objects.filter(status='P'),required=True)
+    failure_report=serializers.PrimaryKeyRelatedField(queryset=FailureReport.objects.all(),required=True)
+
+    def validate_failure_report(self,value):
+        if value.status!='P':
+            raise serializers.ValidationError('Failure report is not in PENDING status.')
+        return value
 
     def save(self):
         failure_report=self.validated_data['failure_report']
@@ -477,8 +491,18 @@ class FailureReportDismissedSerializer(serializers.Serializer):
         return "Report has been dismissed."
 
 class FailureReportReassignSerializer(serializers.Serializer):
-    failure_report = serializers.PrimaryKeyRelatedField(queryset=FailureReport.objects.filter( status__in=['A','S']), required=True)
-    workshop = serializers.PrimaryKeyRelatedField(queryset=Location.objects.filter(location_type='W'), required=True)
+    failure_report = serializers.PrimaryKeyRelatedField(queryset=FailureReport.objects.all(), required=True)
+    workshop = serializers.PrimaryKeyRelatedField(queryset=Location.objects.all(), required=True)
+
+    def validate_failure_report(self,value):
+        if value.status not in ('A','S'):
+            raise serializers.ValidationError('Failure report is not in ASSIGNED or STOPPED status.')
+        return value
+
+    def validate_workshop(self,value):
+        if value.location_type!='W':
+            raise serializers.ValidationError('Provided location is not a workshop.')
+        return value
 
     def save(self):
         failure_report = self.validated_data['failure_report']

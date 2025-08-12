@@ -20,7 +20,6 @@ from rest_framework.exceptions import NotFound, ValidationError
 from django.db.models import Q
 
 
-#TODO: rozważyć usunięcie endpointa my-location i zmodyfikować LocationListSerializer i LocationRetrieveSerializer aby standard i mechanik mogli wyświetlić tylko swoją lokację
 #dodawać i edytować Manufacturera może administrator, reszta może wypisywać
 class ManufacturerListCreateAPIView(generics.ListCreateAPIView):
     queryset = Manufacturer.objects.all()
@@ -47,7 +46,7 @@ class ManufacturerRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPI
 
 
 #dodawać, usuwać oraz modyfikować lokalizacje może administrator
-#wypisywać wszystkie lokalizacje może menadżer i admin
+#wypisywać wszystkie lokalizacje mogą wszyscy
 class LocationListCreateAPIView(generics.ListCreateAPIView):
     queryset = Location.objects.all()
     http_method_names = ['head', 'get', 'post']
@@ -114,18 +113,14 @@ class VehicleListCreateAPIView(generics.ListCreateAPIView):
         qs = super().get_queryset()
         if self.request.user.role in ('standard', 'mechanic'):
             location_id = UserLocationAssignment.objects.filter(user=self.request.user).values_list('location_id', flat=True).first()
-            if location_id is None:
-                return qs.none()
-            if self.request.user.role == 'standard':
-                return qs.filter(location_id=location_id)
-            elif self.request.user.role == 'mechanic':
-                return qs.filter(failure_reports__workshop_id=location_id)
-            else:
-                return qs.none()
+            if location_id is not None:
+                if self.request.user.role == 'standard':
+                    return qs.filter(location_id=location_id)
+                elif self.request.user.role == 'mechanic':
+                    return qs.filter(failure_reports__workshop_id=location_id)
         elif self.request.user.role in ('manager', 'admin'):
             return qs
-        else:
-            return qs.none()
+        return qs.none()
 
 
 #ten widok umożliwia menadżerowi oraz administratorowi odczytywanie, aktualizowanie oraz usuwanie pojazdu
@@ -148,18 +143,14 @@ class VehicleRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView)
         qs = super().get_queryset()
         if self.request.user.role in ('standard','mechanic'):
             location_id=UserLocationAssignment.objects.filter(user=self.request.user).values_list('location_id',flat=True).first()
-            if location_id is None:
-                return qs.none()
-            if self.request.user.role == 'standard':
-                return qs.filter(location_id=location_id)
-            elif self.request.user.role == 'mechanic':
-                return qs.filter(failure_reports__workshop_id=location_id)
-            else:
-                return qs.none()
+            if location_id is not None:
+                if self.request.user.role == 'standard':
+                    return qs.filter(location_id=location_id)
+                elif self.request.user.role == 'mechanic':
+                    return qs.filter(failure_reports__workshop_id=location_id)
         elif self.request.user.role in ('manager', 'admin'):
             return qs
-        else:
-            return qs.none()
+        return qs.none()
 
 
 #jest to widok służący do aktywacji konta oraz zmiany hasła z domyślnego na wybrane przez usera
@@ -236,8 +227,7 @@ class UserListCreateAPIView(generics.ListCreateAPIView):
             return qs.exclude(is_superuser=True)
         elif self.request.user.role == 'admin' and self.request.user.is_superuser == True:
             return qs
-        else:
-            return qs.none()
+        return qs.none()
 
 
 class UserRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
@@ -274,8 +264,7 @@ class UserRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
             return qs.exclude(is_superuser=True)
         elif self.request.user.role == 'admin' and self.request.user.is_superuser == True:
             return qs
-        else:
-            return qs.none()
+        return qs.none()
 
 class AssignUserToLocationAPIView(generics.CreateAPIView):
     queryset = UserLocationAssignment.objects.all()
@@ -420,20 +409,18 @@ class RepairReportRetrieveUpdateAPIView(generics.RetrieveUpdateAPIView):
     def get_queryset(self):
         qs=super().get_queryset()
         if self.request.user.role == 'mechanic':
-            mechanic_workshop = get_object_or_404(UserLocationAssignment, user=self.request.user).location
-            if self.request.method.lower() in ('get','head'):
-                pk=self.kwargs.get('pk')
-                vehicle_id=RepairReport.objects.get(pk=pk).failure_report.vehicle.id
-                if RepairReport.objects.filter(failure_report__vehicle_id=vehicle_id, failure_report__workshop=mechanic_workshop, status__in=['A', 'R']).exists():
-                    return qs.filter(Q(failure_report__workshop=mechanic_workshop) | Q(failure_report__vehicle_id=vehicle_id, status='H'))
-                else:
-                    return qs.filter(failure_report__workshop=mechanic_workshop)
-            elif self.request.method.lower() in ('put', 'patch'):
-                return qs.filter(failure_report__workshop=mechanic_workshop, status__in=['A', 'R'])
-            else:
-                return qs.none()
+            mechanic_workshop_id=UserLocationAssignment.objects.filter(user=self.request.user).values_list('location_id',flat=True).first()
+            if mechanic_workshop_id is not None:
+                if self.request.method.lower() in ('get','head'):
+                    pk=self.kwargs.get('pk')
+                    vehicle_id=RepairReport.objects.filter(pk=pk).values_list('failure_report__vehicle_id',flat=True).first()
+                    if vehicle_id is not None and RepairReport.objects.filter(failure_report__vehicle_id=vehicle_id, failure_report__workshop_id=mechanic_workshop_id, status__in=['A', 'R']).exists():
+                        return qs.filter(Q(failure_report__workshop_id=mechanic_workshop_id) | Q(failure_report__vehicle_id=vehicle_id, status='H'))
+                    else:
+                        return qs.filter(failure_report__workshop_id=mechanic_workshop_id)
+                elif self.request.method.lower() in ('put', 'patch'):
+                    return qs.filter(failure_report__workshop_id=mechanic_workshop_id, status__in=['A', 'R'])
         elif self.request.user.role in ('manager', 'admin'):
             return qs
-        else:
-            return qs.none()
+        return qs.none()
 
