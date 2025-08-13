@@ -183,13 +183,14 @@ class FailureReportTestCase(TestCase):
             title="Brake issue",
             description="Brakes are making noise",
             report_author=self.standard,
-            status='A'  # ASSIGNED
+            status='A',  # ASSIGNED
+            workshop=self.workshop2
         )
 
         self.failure_report3 = FailureReport.objects.create(
             vehicle=self.vehicle3,
-            title="Assigned issue",
-            description="This issue is already assigned",
+            title="Resolved issue",
+            description="This issue is already resolved",
             report_author=self.standard,
             workshop=self.workshop,
             status='R' # RESOLVED
@@ -398,8 +399,7 @@ class FailureReportTestCase(TestCase):
     def test_manager_can_assign_failure_report(self):
         client = APIClient()
         client.force_authenticate(self.manager)
-        response = client.post(reverse('failure-report-assign'), data={
-            "failure_report": self.failure_report1.pk,
+        response = client.post(reverse('failure-report-assign',kwargs={'pk':self.failure_report1.pk}), data={
             "workshop": self.workshop.pk
         })
 
@@ -414,23 +414,27 @@ class FailureReportTestCase(TestCase):
         client = APIClient()
         client.force_authenticate(self.standard)
 
-        response = client.post(reverse('failure-report-assign'), data={
-            "failure_report": str(self.failure_report1.id),
-            "workshop": str(self.workshop.id)
+        response = client.post(reverse('failure-report-assign', kwargs={'pk': self.failure_report1.pk}), data={
+            "workshop": self.workshop.pk
         })
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-#nie działa
+    def test_assigned_failure_report_cannot_be_assigned_again(self):
+        client = APIClient()
+        client.force_authenticate(self.manager)
+        response = client.post(reverse('failure-report-assign',kwargs={'pk':self.failure_report2.pk}), data={
+            "workshop": self.workshop.pk
+        })
+        self.assertEqual(response.status_code,status.HTTP_400_BAD_REQUEST)
+        self.assertIn('Failure report is not in PENDING status.',str(response.json()))
+
+
     def test_manager_can_dismiss_failure_report(self):
         client = APIClient()
         client.force_authenticate(self.manager)
-        response = client.post(reverse('failure-report-dismiss'), data={
-            "failure_report": self.failure_report1.pk
-        })
-
+        response = client.post(reverse('failure-report-dismiss',kwargs={'pk':self.failure_report1.pk}))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-
         # Check that failure report was updated
         failure_report = FailureReport.objects.get(id=self.failure_report1.id)
         self.assertEqual(failure_report.status, 'D')  # DISMISSED
@@ -439,9 +443,7 @@ class FailureReportTestCase(TestCase):
         client = APIClient()
         client.force_authenticate(self.standard)
 
-        response = client.post(reverse('failure-report-dismiss'), data={
-            "failure_report": str(self.failure_report1.id)
-        })
+        response = client.post(reverse('failure-report-dismiss',kwargs={'pk':self.failure_report1.pk}))
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
@@ -451,9 +453,8 @@ class FailureReportTestCase(TestCase):
         client = APIClient()
         client.force_authenticate(self.manager)
 
-        response = client.post(reverse('failure-report-reassign'), data={
-            "failure_report": str(self.failure_report2.id),
-            "workshop": str(self.workshop2.id)
+        response = client.post(reverse('failure-report-reassign',kwargs={'pk':self.failure_report2.pk}), data={
+            "workshop": str(self.workshop.id)
         })
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -461,7 +462,7 @@ class FailureReportTestCase(TestCase):
         # Check that failure report was updated
         failure_report = FailureReport.objects.get(id=self.failure_report2.id)
         self.assertEqual(failure_report.status, 'A')  # ASSIGNED
-        self.assertEqual(failure_report.workshop, self.workshop2)
+        self.assertEqual(failure_report.workshop, self.workshop)
 
     def test_standard_user_cannot_reassign_failure_report(self):
         # Create another workshop
@@ -469,8 +470,7 @@ class FailureReportTestCase(TestCase):
         client = APIClient()
         client.force_authenticate(self.standard)
 
-        response = client.post(reverse('failure-report-reassign'), data={
-            "failure_report": str(self.failure_report2.id),
+        response = client.post(reverse('failure-report-reassign', kwargs={'pk': self.failure_report2.pk}), data={
             "workshop": str(self.workshop2.id)
         })
 
@@ -480,19 +480,16 @@ class FailureReportTestCase(TestCase):
     def test_manager_cannot_reassign_pending_failure_report(self):
         client=APIClient()
         client.force_authenticate(self.manager)
-        response = client.post(reverse('failure-report-reassign'), data={
-            "failure_report": str(self.failure_report1.id),
+        response = client.post(reverse('failure-report-reassign', kwargs={'pk': self.failure_report1.pk}), data={
             "workshop": str(self.workshop2.id)
         })
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('Cannot reassign pending failure report.', str(response.json()))
+        self.assertIn('Failure report is not in ASSIGNED or STOPPED status.', str(response.json()))
 
     def test_manager_cannot_reassign_non_existent_failure_report(self):
         client=APIClient()
         client.force_authenticate(self.manager)
-        response = client.post(reverse('failure-report-reassign'), data={
-            "failure_report": '5f35a175-73bb-44ac-b007-bb1d7ff3f13b',
+        response = client.post(reverse('failure-report-reassign',kwargs={'pk':'5f35a175-73bb-44ac-b007-bb1d7ff3f13b'}), data={
             "workshop": str(self.workshop2.id)
         })
-        print(response.json())
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)

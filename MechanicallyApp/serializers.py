@@ -407,9 +407,8 @@ class FailureReportCreateSerializer(serializers.ModelSerializer):
         fields=['vehicle','title','description']
 
     def validate_vehicle(self,value):
-        try:
-            value=Vehicle.objects.get(pk=value)
-        except Vehicle.DoesNotExist:
+        value=Vehicle.objects.filter(pk=value).first()
+        if value is None:
             raise NotFound('There is no vehicle with provided ID assigned to your branch.')
         user_location_id=UserLocationAssignment.objects.filter(user_id=self.context.get('request').user.id).values_list('location_id',flat=True).first()
         if user_location_id is None:
@@ -453,14 +452,7 @@ class FailureReportRetrieveSerializer(serializers.ModelSerializer):
         read_only_fields=['id','title','vehicle','description','workshop','report_date','report_author','status','last_status_change_date']
 
 class FailureReportAssignSerializer(serializers.Serializer):
-    failure_report=serializers.PrimaryKeyRelatedField(queryset=FailureReport.objects.all(),required=True)
     workshop=serializers.PrimaryKeyRelatedField(queryset=Location.objects.all(),required=True)
-    def validate_failure_report(self,value):
-        if value.status!='P':
-            raise serializers.ValidationError('Failure report is not in PENDING status.')
-        if value.workshop is not None:
-            raise serializers.ValidationError('Failure report has already been assigned to a workshop.')
-        return value
 
     def validate_workshop(self,value):
         if value.location_type!='W':
@@ -468,45 +460,27 @@ class FailureReportAssignSerializer(serializers.Serializer):
         return value
 
     def save(self):
-        failure_report=self.validated_data['failure_report']
-        workshop=self.validated_data['workshop']
+        failure_report=self.context.get('failure_report')
+        workshop=self.validated_data.get('workshop')
         failure_report.workshop=workshop
         failure_report.status='A'
         failure_report.save()
         repair_report=RepairReport.objects.create(failure_report=failure_report,status='A',cost=0)
-        return {'failure_report_id':failure_report.pk,'repair_report_id':repair_report.pk}
+        return {'repair_report_id':repair_report.pk}
 
-class FailureReportDismissedSerializer(serializers.Serializer):
-    failure_report=serializers.PrimaryKeyRelatedField(queryset=FailureReport.objects.all(),required=True)
-
-    def validate_failure_report(self,value):
-        if value.status!='P':
-            raise serializers.ValidationError('Failure report is not in PENDING status.')
-        return value
-
-    def save(self):
-        failure_report=self.validated_data['failure_report']
-        failure_report.status='D'
-        failure_report.save()
-        return "Report has been dismissed."
 
 class FailureReportReassignSerializer(serializers.Serializer):
-    failure_report = serializers.PrimaryKeyRelatedField(queryset=FailureReport.objects.all(), required=True)
     workshop = serializers.PrimaryKeyRelatedField(queryset=Location.objects.all(), required=True)
-
-    def validate_failure_report(self,value):
-        if value.status not in ('A','S'):
-            raise serializers.ValidationError('Failure report is not in ASSIGNED or STOPPED status.')
-        return value
-
     def validate_workshop(self,value):
         if value.location_type!='W':
             raise serializers.ValidationError('Provided location is not a workshop.')
+        elif value.id==self.context.get('failure_report').workshop.id:
+            raise serializers.ValidationError('Provided workshop is the same as current workshop.')
         return value
 
     def save(self):
-        failure_report = self.validated_data['failure_report']
-        workshop = self.validated_data['workshop']
+        failure_report = self.context.get('failure_report')
+        workshop = self.validated_data.get('workshop')
         failure_report.workshop = workshop
         failure_report.status = 'A'
         failure_report.save()

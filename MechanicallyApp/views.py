@@ -1,4 +1,3 @@
-from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 from .models import Manufacturer, Location, UserLocationAssignment, Vehicle, User, FailureReport, RepairReport
 from .serializers import ManufacturerSerializer, LocationCreateRetrieveSerializer, \
@@ -8,7 +7,7 @@ from .serializers import ManufacturerSerializer, LocationCreateRetrieveSerialize
     ResetPasswordRequestSerializer, \
     UserRetrieveSerializer, UserLocationAssignmentSerializer, FailureReportCreateSerializer, \
     FailureReportListSerializer, \
-    FailureReportRetrieveSerializer, FailureReportAssignSerializer, FailureReportDismissedSerializer, \
+    FailureReportRetrieveSerializer, FailureReportAssignSerializer, \
     FailureReportReassignSerializer, \
     RepairReportRetrieveUpdateSerializer, RepairReportListSerializer, LocationUpdateSerializer, LocationListSerializer
 from rest_framework import generics, status
@@ -323,33 +322,50 @@ class FailureReportAssignPIView(APIView):
     http_method_names = ['post']
     permission_classes = [IsManager]
 
-    def post(self, request):
-        serializer = FailureReportAssignSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        result = serializer.save()
-        return Response(result, status=status.HTTP_200_OK)
+    def post(self, request, pk):
+        failure_report=FailureReport.objects.filter(pk=pk).first()
+        if failure_report is None:
+            raise NotFound("There is no failure report with provided ID.")
+        elif failure_report.status != 'P':
+            raise ValidationError(detail='Failure report is not in PENDING status.')
+        elif failure_report.workshop_id is not None:
+            raise ValidationError('Failure report has already been assigned to a workshop.')
+        else:
+            serializer = FailureReportAssignSerializer(data=request.data, context={'failure_report': failure_report})
+            serializer.is_valid(raise_exception=True)
+            result = serializer.save()
+            return Response(result, status=status.HTTP_200_OK)
 
 #to widok służący do zamykania sprawy FailureReport poprzez ustawienie statusu DISMISSED
 class FailureReportDismissedAPIView(APIView):
     http_method_names = ['post']
     permission_classes = [IsManager]
 
-    def post(self, request):
-        serializer = FailureReportDismissedSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        result = serializer.save()
-        return Response({'message': result}, status=status.HTTP_200_OK)
+    def post(self, request, pk):
+        failure_report=FailureReport.objects.filter(pk=pk, status='P').first()
+        if failure_report is None:
+            raise NotFound("There is no failure report with provided ID.")
+        else:
+            failure_report.status='D'
+            failure_report.save()
+            return Response({'message': 'Failure report has been dismissed.'}, status=status.HTTP_200_OK)
 
 #ten widok służy do ponownego przypisania już wcześniej przypisanego failure reportu do warsztatu w przypadku gdy warsztat został usunięty lub menadżer postanowi go zmienić
 class FailureReportReassignAPIView(APIView):
     http_method_names = ['post']
     permission_classes = [IsManager]
 
-    def post(self, request):
-        serializer = FailureReportReassignSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        result = serializer.save()
-        return Response({'message': result}, status=status.HTTP_200_OK)
+    def post(self, request, pk):
+        failure_report = FailureReport.objects.filter(pk=pk).first()
+        if failure_report is None:
+            raise NotFound("There is no failure report with provided ID.")
+        elif failure_report.status not in ('A','S'):
+            raise ValidationError('Failure report is not in ASSIGNED or STOPPED status.')
+        else:
+            serializer = FailureReportReassignSerializer(data=request.data, context={'failure_report': failure_report})
+            serializer.is_valid(raise_exception=True)
+            result = serializer.save()
+            return Response({'message': result}, status=status.HTTP_200_OK)
 
 
 #widok do wypisywania wszystkich repair reportów/do filtrowania, tylko dla menadżera i admina
