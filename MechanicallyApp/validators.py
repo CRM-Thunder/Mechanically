@@ -39,6 +39,9 @@ def vehicle_model_validator(vehicle_model):
     if not re.match(r'^[A-Za-z0-9][A-Za-z0-9-]*(?: [A-Za-z0-9-]+)*$', vehicle_model):
         raise serializers.ValidationError('Vehicle model may contain letters, numbers,hyphens and only one space between characters.')
 
+def natural_text_validator(text):
+    if not re.match(r'^[A-Za-zĄąĆćĘęŁłŃńÓóŚśŹźŻż0-9\s.,:;!?\'"\-()[\]{}@#%&]*$', text):
+        raise serializers.ValidationError('"Only letters, numbers, spaces, and basic punctuation are allowed."')
 
 class MaximumLengthValidator:
     def __init__(self, max_length=256):

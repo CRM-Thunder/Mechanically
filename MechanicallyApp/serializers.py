@@ -3,10 +3,9 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 from rest_framework.exceptions import PermissionDenied, NotFound
-from rest_framework.validators import UniqueValidator
 
-from .models import Manufacturer, User, Location, UserLocationAssignment, Vehicle, FailureReport, RepairReport
-from .validators import manufacturer_name_validator, first_name_validator, last_name_validator, phone_number_validator, location_name_validator, vin_validator, vehicle_model_validator, vehicle_year_validator
+from .models import Manufacturer, User, Location, UserLocationAssignment, Vehicle, FailureReport, RepairReport, RepairReportRejection
+from .validators import manufacturer_name_validator, first_name_validator, last_name_validator, phone_number_validator, location_name_validator, vin_validator, vehicle_model_validator, vehicle_year_validator, natural_text_validator
 from .generators import generate_username, generate_random_password
 from .mail_services import send_activation_email, send_reset_password_email
 
@@ -282,34 +281,22 @@ class ManufacturerSerializer(serializers.ModelSerializer):
 
 
 #serializer do przypisywania użytkownika do danej lokalizacji
-class UserLocationAssignmentSerializer(serializers.ModelSerializer):
-    user = serializers.PrimaryKeyRelatedField(
-        queryset=User.objects.all(),
-        validators=[
-            UniqueValidator(
-                queryset=UserLocationAssignment.objects.all(),
-                message="This user is already assigned to a location."
-            )
-        ]
-    )
-    class Meta:
-        model = UserLocationAssignment
-        fields = ['user','location','assign_date']
-        read_only_fields = ['assign_date']
-
-    def validate_user(self,value):
-        if value.role not in ('standard','mechanic'):
-            raise serializers.ValidationError('Only standard users and mechanic users can be assigned to locations.')
-        return value
+class UserLocationAssignmentSerializer(serializers.Serializer):
+    location=serializers.PrimaryKeyRelatedField(queryset=Location.objects.all(),required=True)
 
     def validate(self, data):
-        user = data['user']
-        location = data['location']
+        user = self.context.get('user')
+        location = data.get('location')
         if user.role=='standard' and location.location_type!='B':
             raise serializers.ValidationError('Standard users can be assigned to branch locations only.')
         if user.role=='mechanic' and location.location_type!='W':
             raise serializers.ValidationError('Mechanic users can be assigned to workshop locations only.')
         return data
+
+    def save(self, **kwargs):
+        user = self.context.get('user')
+        location = self.validated_data.get('location')
+        UserLocationAssignment.objects.create(user_id=user.pk,location_id=location.pk)
 
 #serializer służący do wypisania informacji o lokacji mechanika/standarda
 class UserNestedLocationAssignmentSerializer(serializers.ModelSerializer):
@@ -512,3 +499,45 @@ class RepairReportListSerializer(serializers.ModelSerializer):
         fields=['id','status','title','vehicle_id','report_date']
         read_only_fields=['id','status','title','vehicle_id','report_date']
 
+class RepairReportRejectionListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model=RepairReportRejection
+        fields=['id','repair_report','title','rejection_date']
+        read_only_fields=['id','repair_report','title','rejection_date']
+
+    def to_representation(self,instance):
+        rep=super().to_representation(instance)
+        if instance.role=='mechanic':
+            rep.pop('repair_report')
+        return rep
+
+class RepairReportRejectionRetrieveSerializer(serializers.ModelSerializer):
+    class Meta:
+        model=RepairReportRejection
+        fields=['id','repair_report','title','rejection_date','reason']
+        read_only_fields=['id','repair_report','title','rejection_date','reason']
+
+    def to_representation(self, instance):
+        rep = super().to_representation(instance)
+        if instance.role == 'mechanic':
+            rep.pop('repair_report')
+        return rep
+
+class RepairReportRejectionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model=RepairReportRejection
+        fields=['id','title','rejection_date','reason']
+        read_only_fields=['id','rejection_date']
+
+    def validate_repair_report(self,value):
+        if value.status!='R':
+            raise serializers.ValidationError('Provided repair report is not in READY status.')
+        return value
+
+    def validate_title(self,value):
+        natural_text_validator(value)
+        return value
+
+    def validate_reason(self,value):
+        natural_text_validator(value)
+        return value

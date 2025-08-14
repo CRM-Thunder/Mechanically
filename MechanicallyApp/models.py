@@ -87,7 +87,6 @@ class Vehicle(models.Model):
     fuel_type=models.CharField(max_length=2, choices=FuelTypeChoices.choices, default=FuelTypeChoices.OTHER)
     # noinspection PyUnresolvedReferences
     availability=models.CharField(max_length=1, choices=AvailabilityChoices.choices, default=AvailabilityChoices.AVAILABLE)
-    #musi być zabezpieczenie, że może być przypisany tylko do brancha, na poziomie Serializera lub stworzyć własny trigger
     location=models.ForeignKey('Location',on_delete=models.SET_NULL, related_name='vehicles', null=True, blank=True)
 
 
@@ -115,7 +114,7 @@ class FailureReport(models.Model):
     id=models.UUIDField(primary_key=True,default=uuid.uuid4,editable=False)
     vehicle=models.ForeignKey('Vehicle',on_delete=models.CASCADE, related_name='failure_reports')
     title=models.CharField(max_length=100)
-    description=models.TextField()
+    description=models.CharField(max_length=1024)
     workshop=models.ForeignKey('Location',on_delete=models.SET_NULL, null=True, blank=True, related_name='failure_reports')
     report_date=models.DateTimeField(auto_now_add=True)
     report_author=models.ForeignKey('User',on_delete=models.SET_NULL, related_name='failure_reports',null=True)
@@ -130,9 +129,16 @@ class RepairReport(models.Model):
         HISTORIC='H'
     id=models.UUIDField(primary_key=True,default=uuid.uuid4,editable=False)
     failure_report=models.OneToOneField('FailureReport',on_delete=models.CASCADE, related_name='repair_report')
-    condition_analysis=models.TextField()
-    repair_action=models.TextField()
+    condition_analysis=models.CharField(max_length=1024)
+    repair_action=models.TextField(max_length=1024)
     cost=models.DecimalField(max_digits=8,decimal_places=2)
     last_change_date=models.DateTimeField(auto_now=True)
     # noinspection PyUnresolvedReferences
     status=models.CharField(max_length=1,choices=RepairStatusChoices.choices,default=RepairStatusChoices.ACTIVE)
+
+class RepairReportRejection(models.Model):
+    id=models.UUIDField(primary_key=True,default=uuid.uuid4,editable=False)
+    repair_report=models.ForeignKey('RepairReport',on_delete=models.CASCADE, related_name='repair_report_rejections')
+    rejection_date=models.DateTimeField(auto_now_add=True)
+    title=models.CharField(max_length=100)
+    reason=models.CharField(max_length=1024)

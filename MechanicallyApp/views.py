@@ -85,7 +85,7 @@ class UserLocationListAPIView(generics.ListAPIView):
     http_method_names = ['head', 'get']
 
     def get_queryset(self):
-        return UserLocationAssignment.objects.filter(user=self.request.user)
+        return UserLocationAssignment.objects.filter(user_id=self.request.user.id)
 
 
 #ten widok umożliwia wypisywanie i tworzenie pojazdów przez menadżera oraz administratora
@@ -111,7 +111,7 @@ class VehicleListCreateAPIView(generics.ListCreateAPIView):
     def get_queryset(self):
         qs = super().get_queryset()
         if self.request.user.role in ('standard', 'mechanic'):
-            location_id = UserLocationAssignment.objects.filter(user=self.request.user).values_list('location_id', flat=True).first()
+            location_id = UserLocationAssignment.objects.filter(user_id=self.request.user.id).values_list('location_id', flat=True).first()
             if location_id is not None:
                 if self.request.user.role == 'standard':
                     return qs.filter(location_id=location_id)
@@ -141,7 +141,7 @@ class VehicleRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView)
     def get_queryset(self):
         qs = super().get_queryset()
         if self.request.user.role in ('standard','mechanic'):
-            location_id=UserLocationAssignment.objects.filter(user=self.request.user).values_list('location_id',flat=True).first()
+            location_id=UserLocationAssignment.objects.filter(user_id=self.request.user.id).values_list('location_id',flat=True).first()
             if location_id is not None:
                 if self.request.user.role == 'standard':
                     return qs.filter(location_id=location_id)
@@ -252,7 +252,7 @@ class UserRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
     def get_queryset(self):
         qs = super().get_queryset()
         if self.request.user.role == 'standard' or self.request.user.role == 'mechanic':
-            user_location_id = UserLocationAssignment.objects.filter(user=self.request.user).values_list('location_id',flat=True).first()
+            user_location_id = UserLocationAssignment.objects.filter(user_id=self.request.user.id).values_list('location_id',flat=True).first()
             if user_location_id is not None:
                 return qs.filter(user_location_assignment__location_id=user_location_id)
             else:
@@ -265,23 +265,31 @@ class UserRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
             return qs
         return qs.none()
 
-class AssignUserToLocationAPIView(generics.CreateAPIView):
-    queryset = UserLocationAssignment.objects.all()
-    serializer_class = UserLocationAssignmentSerializer
+class AssignUserToLocationAPIView(APIView):
     http_method_names = ['post']
     permission_classes = [IsManager | IsAdmin]
+
+    def post(self,request,pk):
+        user = User.objects.filter(pk=pk, role__in=('standard','mechanic')).first()
+        if user is None:
+            raise NotFound('There is no standard user or mechanic user with provided ID.')
+        if UserLocationAssignment.objects.filter(user_id=pk).exists():
+            raise ValidationError('This user is already assigned to a location.')
+        serializer=UserLocationAssignmentSerializer(data=request.data,context={'user':user})
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response({'message':'User has been assigned to location.'},status=status.HTTP_200_OK)
 
 
 class UnassignUserFromLocationAPIView(APIView):
     http_method_names = ['post']
     permission_classes = [IsManager | IsAdmin]
 
-    def post(self, request, user_id):
-        if not User.objects.filter(pk=user_id, role__in=('standard', 'mechanic')).exists():
+    def post(self, request, pk):
+        if not User.objects.filter(pk=pk, role__in=('standard', 'mechanic')).exists():
             raise NotFound(detail='There is no standard user or mechanic user with provided ID.')
-        try:
-            obj=UserLocationAssignment.objects.get(user_id=user_id)
-        except UserLocationAssignment.DoesNotExist:
+        obj=UserLocationAssignment.objects.filter(user_id=pk).first()
+        if obj is None:
             raise ValidationError(detail='User is not assigned to any location.')
         obj.delete()
         return Response({'message':'User has been unassigned.'},status=status.HTTP_200_OK)
@@ -383,7 +391,7 @@ class RepairReportsInWorkshopListAPIView(generics.ListAPIView):
     http_method_names = ['head', 'get']
 
     def get_queryset(self):
-        mechanic_workshop_id=UserLocationAssignment.objects.filter(user=self.request.user).values_list('location_id',flat=True).first()
+        mechanic_workshop_id=UserLocationAssignment.objects.filter(user_id=self.request.user.id,location__location_type='W').values_list('location_id',flat=True).first()
         if mechanic_workshop_id is not None:
             return RepairReport.objects.filter(failure_report__workshop_id=mechanic_workshop_id)
         else:
@@ -396,7 +404,7 @@ class RelatedVehicleRepairReportsListAPIView(APIView):
     permission_classes = [IsMechanicAssignedToWorkshop]
 
     def get(self,request,vehicle_id):
-        mechanic_workshop_id=UserLocationAssignment.objects.filter(user=self.request.user).values_list('location_id',flat=True).first()
+        mechanic_workshop_id=UserLocationAssignment.objects.filter(user_id=self.request.user.id, location__location_type='W').values_list('location_id',flat=True).first()
         if mechanic_workshop_id is not None:
             #sprawdzenie czy dla danego pojazdu istnieje failure_report przypisany do warsztatu mechanika o statusie ACTIVE albo READY: oznacza to, że pojazd jest przydzielony do naprawy w warsztacie mechanika
             if RepairReport.objects.filter(failure_report__vehicle_id=vehicle_id, failure_report__workshop_id=mechanic_workshop_id, status__in=['A', 'R']).exists():
@@ -425,7 +433,7 @@ class RepairReportRetrieveUpdateAPIView(generics.RetrieveUpdateAPIView):
     def get_queryset(self):
         qs=super().get_queryset()
         if self.request.user.role == 'mechanic':
-            mechanic_workshop_id=UserLocationAssignment.objects.filter(user=self.request.user).values_list('location_id',flat=True).first()
+            mechanic_workshop_id=UserLocationAssignment.objects.filter(user_id=self.request.user.id,location__location_type='W').values_list('location_id',flat=True).first()
             if mechanic_workshop_id is not None:
                 if self.request.method.lower() in ('get','head'):
                     pk=self.kwargs.get('pk')
@@ -440,3 +448,21 @@ class RepairReportRetrieveUpdateAPIView(generics.RetrieveUpdateAPIView):
             return qs
         return qs.none()
 
+
+class RepairReportSetAsReadyAPIView(APIView):
+    http_method_names = ['post']
+    permission_classes = [IsMechanicAssignedToWorkshop]
+
+    def post(self, request, pk):
+        mechanic_workshop_id=UserLocationAssignment.objects.filter(user_id=self.request.user.id,location__location_type='W').values_list('location_id',flat=True).first()
+        if mechanic_workshop_id is None:
+            raise NotFound("You are not assigned to any location.")
+        repair_report=RepairReport.objects.filter(pk=pk,workshop_id=mechanic_workshop_id).first()
+        if repair_report is None:
+            raise NotFound("There is no repair report with provided ID.")
+        elif repair_report.status != 'A':
+            raise ValidationError(detail='Repair report is not in ACTIVE status.')
+        else:
+            repair_report.status='R'
+            repair_report.save()
+            return Response({'message': 'Repair report has been set as ready.'}, status=status.HTTP_200_OK)
