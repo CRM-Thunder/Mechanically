@@ -1,6 +1,7 @@
 from django.contrib.auth.tokens import default_token_generator
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.db import transaction
 from rest_framework import serializers
 from rest_framework.exceptions import PermissionDenied, NotFound
 
@@ -408,12 +409,13 @@ class FailureReportCreateSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         vehicle=validated_data.get('vehicle')
-        vehicle.availability='U'
-        title=validated_data.get('title')
-        description=validated_data.get('description')
-        vehicle.save()
-        instance = FailureReport.objects.create(vehicle=vehicle,title=title,description=description,status='P', report_author=self.context.get('request').user)
-        return instance
+        title = validated_data.get('title')
+        description = validated_data.get('description')
+        with transaction.atomic():
+            vehicle.availability='U'
+            vehicle.save()
+            instance = FailureReport.objects.create(vehicle=vehicle,title=title,description=description,status='P', report_author=self.context.get('request').user)
+            return instance
 
 
 class FailureReportListSerializer(serializers.ModelSerializer):
@@ -449,11 +451,12 @@ class FailureReportAssignSerializer(serializers.Serializer):
     def save(self):
         failure_report=self.context.get('failure_report')
         workshop=self.validated_data.get('workshop')
-        failure_report.workshop=workshop
-        failure_report.status='A'
-        failure_report.save()
-        repair_report=RepairReport.objects.create(failure_report=failure_report,status='A',cost=0)
-        return {'repair_report_id':repair_report.pk}
+        with transaction.atomic():
+            failure_report.workshop=workshop
+            failure_report.status='A'
+            failure_report.save()
+            repair_report=RepairReport.objects.create(failure_report=failure_report,status='A',cost=0)
+            return {'repair_report_id':repair_report.pk}
 
 
 class FailureReportReassignSerializer(serializers.Serializer):
@@ -529,10 +532,6 @@ class RepairReportRejectionSerializer(serializers.ModelSerializer):
         fields=['id','title','rejection_date','reason']
         read_only_fields=['id','rejection_date']
 
-    def validate_repair_report(self,value):
-        if value.status!='R':
-            raise serializers.ValidationError('Provided repair report is not in READY status.')
-        return value
 
     def validate_title(self,value):
         natural_text_validator(value)

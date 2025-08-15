@@ -1,5 +1,7 @@
+from django.db import transaction
 from rest_framework.response import Response
-from .models import Manufacturer, Location, UserLocationAssignment, Vehicle, User, FailureReport, RepairReport
+from .models import Manufacturer, Location, UserLocationAssignment, Vehicle, User, FailureReport, RepairReport, \
+    RepairReportRejection
 from .serializers import ManufacturerSerializer, LocationCreateRetrieveSerializer, \
     UserNestedLocationAssignmentSerializer, \
     VehicleCreateUpdateSerializer, VehicleRetrieveSerializer, VehicleListSerializer, AccountActivationSerializer, \
@@ -9,7 +11,8 @@ from .serializers import ManufacturerSerializer, LocationCreateRetrieveSerialize
     FailureReportListSerializer, \
     FailureReportRetrieveSerializer, FailureReportAssignSerializer, \
     FailureReportReassignSerializer, \
-    RepairReportRetrieveUpdateSerializer, RepairReportListSerializer, LocationUpdateSerializer, LocationListSerializer
+    RepairReportRetrieveUpdateSerializer, RepairReportListSerializer, LocationUpdateSerializer, LocationListSerializer, \
+    RepairReportRejectionSerializer, RepairReportRejectionListSerializer, RepairReportRejectionRetrieveSerializer
 from rest_framework import generics, status
 from rest_framework.views import APIView
 from .permissions import IsManager, IsAdmin, \
@@ -443,7 +446,7 @@ class RepairReportRetrieveUpdateAPIView(generics.RetrieveUpdateAPIView):
                     else:
                         return qs.filter(failure_report__workshop_id=mechanic_workshop_id)
                 elif self.request.method.lower() in ('put', 'patch'):
-                    return qs.filter(failure_report__workshop_id=mechanic_workshop_id, status__in=['A', 'R'])
+                    return qs.filter(failure_report__workshop_id=mechanic_workshop_id, status='A')
         elif self.request.user.role in ('manager', 'admin'):
             return qs
         return qs.none()
@@ -466,3 +469,75 @@ class RepairReportSetAsReadyAPIView(APIView):
             repair_report.status='R'
             repair_report.save()
             return Response({'message': 'Repair report has been set as ready.'}, status=status.HTTP_200_OK)
+
+
+class RepairReportRejectAPIView(APIView):
+    http_method_names = ['post']
+    permission_classes = [IsManager]
+
+    def post(self, request, pk):
+        repair_report=RepairReport.objects.filter(pk=pk).first()
+        if repair_report is None:
+            raise NotFound("There is no repair report with provided ID.")
+        elif repair_report.status != 'R':
+            raise ValidationError(detail='Repair report is not in READY status.')
+        else:
+            serializer=RepairReportRejectionSerializer(data=request.data,context={'repair_report':repair_report})
+            serializer.is_valid(raise_exception=True)
+            with transaction.atomic():
+                serializer.save()
+                repair_report.status='A'
+                repair_report.save()
+                return Response({'message': 'Repair report has been rejected.'}, status=status.HTTP_200_OK)
+
+
+class RepairReportRejectionListAPIView(generics.ListAPIView):
+    queryset = RepairReportRejection.objects.all()
+    serializer_class = RepairReportRejectionListSerializer
+    permission_classes = [IsManager | IsAdmin |IsMechanicAssignedToWorkshop]
+    http_method_names = ['head', 'get']
+
+    def get_queryset(self):
+        qs=super().get_queryset()
+        if self.request.user.role == 'mechanic':
+            mechanic_workshop_id=UserLocationAssignment.objects.filter(user_id=self.request.user.id,location__location_type='W').values_list('location_id',flat=True).first()
+            if mechanic_workshop_id is not None:
+                return qs.filter(failure_report__workshop_id=mechanic_workshop_id)
+        elif self.request.user.role in ('manager', 'admin'):
+            return qs
+        return qs.none()
+
+class RepairReportRejectionRetrieveAPIView(generics.RetrieveAPIView):
+    queryset = RepairReportRejection.objects.all()
+    serializer_class = RepairReportRejectionRetrieveSerializer
+    permission_classes = [IsManager | IsAdmin | IsMechanicAssignedToWorkshop]
+    http_method_names = ['head', 'get']
+
+    def get_queryset(self):
+        qs=super().get_queryset()
+        if self.request.user.role == 'mechanic':
+            mechanic_workshop_id=UserLocationAssignment.objects.filter(user_id=self.request.user.id,location__location_type='W').values_list('location_id',flat=True).first()
+            if mechanic_workshop_id is not None:
+                return qs.filter(failure_report__workshop_id=mechanic_workshop_id)
+        elif self.request.user.role in ('manager', 'admin'):
+            return qs
+        return qs.none()
+
+class FailureReportResolveAPIView(APIView):
+    http_method_names = ['post']
+    permission_classes = [IsManager]
+#TODO: zaimplementować 409 gdy jest status nie odpowiada oczekiwanemu, dotyczy większej ilości endpointów
+    def post(self,request, pk):
+        failure_report=FailureReport.objects.filter(pk=pk,status='A').first()
+        if failure_report is None:
+            raise NotFound("There is no ASSIGNED failure report with provided ID.")
+        with transaction.atomic():
+            repair_report=failure_report.repair_report
+            vehicle=failure_report.vehicle
+            repair_report.status='H'
+            failure_report.status='R'
+            vehicle.status='A'
+            repair_report.save()
+            failure_report.save()
+            vehicle.save()
+        return Response({'message':'Repair report has been resolved.'},status=status.HTTP_200_OK)
