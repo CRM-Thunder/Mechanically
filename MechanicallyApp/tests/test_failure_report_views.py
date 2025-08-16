@@ -38,7 +38,8 @@ class FailureReportTestCase(TestCase):
         self.standard3 = User.objects.create_user(first_name="Arnold", last_name="Wasp", username="arnwas1111",
                                                   email="testowy2123122@gmail.com", password="test1234", role="standard",
                                                   phone_number="444414444")
-
+#TODO: stworzyć kolejnego managera i wytestować czy może modyfikować stan failure_reportów, którymi nie zarządza./
+# Do tego przetestować procedurę przypisywania i wypisywania z zarządzania failure reportem
         self.manager = User.objects.create_user(
             first_name="Szymon",
             last_name="Chasowski",
@@ -175,7 +176,8 @@ class FailureReportTestCase(TestCase):
             title="Engine failure",
             description="Engine is not starting properly",
             report_author=self.standard,
-            status='P'  # PENDING
+            status='P',  # PENDING
+            managed_by=self.manager
         )
 
         self.failure_report2 = FailureReport.objects.create(
@@ -184,7 +186,8 @@ class FailureReportTestCase(TestCase):
             description="Brakes are making noise",
             report_author=self.standard,
             status='A',  # ASSIGNED
-            workshop=self.workshop2
+            workshop=self.workshop2,
+            managed_by = self.manager
         )
 
         self.failure_report3 = FailureReport.objects.create(
@@ -193,7 +196,8 @@ class FailureReportTestCase(TestCase):
             description="This issue is already resolved",
             report_author=self.standard,
             workshop=self.workshop,
-            status='R' # RESOLVED
+            status='R', # RESOLVED
+            managed_by=self.manager
         )
 
         # Create repair report for the assigned failure

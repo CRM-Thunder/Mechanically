@@ -16,7 +16,7 @@ from .serializers import ManufacturerSerializer, LocationCreateRetrieveSerialize
 from rest_framework import generics, status
 from rest_framework.views import APIView
 from .permissions import IsManager, IsAdmin, \
-    IsAdminOrSuperuserAndTargetUserHasLowerRole, IsStandardAssignedToBranch, IsMechanicAssignedToWorkshop
+    IsAdminOrSuperuserAndTargetUserHasLowerRole, IsStandardAssignedToBranch, IsMechanicAssignedToWorkshop, IsManagerThatManagesSelectedFailureReport
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import NotFound, ValidationError
 from django.db.models import Q
@@ -331,52 +331,116 @@ class FailureReportRetrieveAPIView(generics.RetrieveAPIView):
 #to widok do pierwszego przypisania warsztatu do failure, tylko dla zgłoszeń w statusie PENDING
 class FailureReportAssignPIView(APIView):
     http_method_names = ['post']
+    permission_classes = [IsManagerThatManagesSelectedFailureReport]
+
+    def post(self, request, pk):
+        failure_report=FailureReport.objects.filter(pk=pk).first()
+        if failure_report is None:
+            raise NotFound("There is no failure report with provided ID.")
+
+        self.check_object_permissions(self.request, failure_report)
+        if failure_report.status != 'P':
+            raise ValidationError(detail='Failure report is not in PENDING status.')
+        if failure_report.workshop_id is not None:
+            raise ValidationError('Failure report has already been assigned to a workshop.')
+
+        serializer = FailureReportAssignSerializer(data=request.data, context={'failure_report': failure_report})
+        serializer.is_valid(raise_exception=True)
+        result = serializer.save()
+        return Response(result, status=status.HTTP_200_OK)
+
+#to widok służący do zamykania sprawy FailureReport poprzez ustawienie statusu DISMISSED
+class FailureReportDismissedAPIView(APIView):
+    http_method_names = ['post']
+    permission_classes = [IsManagerThatManagesSelectedFailureReport]
+
+    def post(self, request, pk):
+        failure_report=FailureReport.objects.filter(pk=pk).first()
+        if failure_report is None:
+            raise NotFound("There is no failure report with provided ID.")
+        self.check_object_permissions(self.request, failure_report)
+        if failure_report.status!='P':
+            raise ValidationError('Failure report is not in PENDING status.')
+        failure_report.status='D'
+        failure_report.save()
+        return Response({'message': 'Failure report has been dismissed.'}, status=status.HTTP_200_OK)
+
+class FailureReportResolveAPIView(APIView):
+    http_method_names = ['post']
+    permission_classes = [IsManagerThatManagesSelectedFailureReport]
+    def post(self,request, pk):
+        failure_report=FailureReport.objects.filter(pk=pk).first()
+        if failure_report is None:
+            raise NotFound("There is no ASSIGNED failure report with provided ID.")
+        self.check_object_permissions(self.request, failure_report)
+        if failure_report.status!='A':
+            raise ValidationError('Failure report is not in ASSIGNED status.')
+        with transaction.atomic():
+            repair_report=failure_report.repair_report
+            vehicle=failure_report.vehicle
+            repair_report.status='H'
+            failure_report.status='R'
+            vehicle.status='A'
+            repair_report.save()
+            failure_report.save()
+            vehicle.save()
+        return Response({'message':'Repair report has been resolved.'},status=status.HTTP_200_OK)
+
+#ten widok służy do ponownego przypisania już wcześniej przypisanego failure reportu do warsztatu w przypadku gdy warsztat został usunięty lub menadżer postanowi go zmienić
+class FailureReportReassignAPIView(APIView):
+    http_method_names = ['post']
+    permission_classes = [IsManagerThatManagesSelectedFailureReport]
+
+    def post(self, request, pk):
+        failure_report = FailureReport.objects.filter(pk=pk).first()
+        if failure_report is None:
+            raise NotFound("There is no failure report with provided ID.")
+
+        self.check_object_permissions(self.request, failure_report)
+        if failure_report.status not in ('A','S'):
+            raise ValidationError('Failure report is not in ASSIGNED or STOPPED status.')
+
+        serializer = FailureReportReassignSerializer(data=request.data, context={'failure_report': failure_report})
+        serializer.is_valid(raise_exception=True)
+        result = serializer.save()
+        return Response({'message': result}, status=status.HTTP_200_OK)
+
+
+class FailureReportBecomeManagerAPIView(APIView):
+    http_method_names = ['post']
     permission_classes = [IsManager]
 
     def post(self, request, pk):
         failure_report=FailureReport.objects.filter(pk=pk).first()
         if failure_report is None:
             raise NotFound("There is no failure report with provided ID.")
-        elif failure_report.status != 'P':
-            raise ValidationError(detail='Failure report is not in PENDING status.')
-        elif failure_report.workshop_id is not None:
-            raise ValidationError('Failure report has already been assigned to a workshop.')
+        elif failure_report.status in ('R','D'):
+            raise ValidationError(detail='Failure report is not in PENDING, ASSIGNED or STOPPED status.')
+        elif failure_report.managed_by is not None:
+            if failure_report.managed_by == self.request.user:
+                raise ValidationError(detail='Failure report is already managed by you.')
+            raise ValidationError(detail='Failure report is already managed by another manager.')
         else:
-            serializer = FailureReportAssignSerializer(data=request.data, context={'failure_report': failure_report})
-            serializer.is_valid(raise_exception=True)
-            result = serializer.save()
-            return Response(result, status=status.HTTP_200_OK)
-
-#to widok służący do zamykania sprawy FailureReport poprzez ustawienie statusu DISMISSED
-class FailureReportDismissedAPIView(APIView):
-    http_method_names = ['post']
-    permission_classes = [IsManager]
-
-    def post(self, request, pk):
-        failure_report=FailureReport.objects.filter(pk=pk, status='P').first()
-        if failure_report is None:
-            raise NotFound("There is no failure report with provided ID.")
-        else:
-            failure_report.status='D'
+            failure_report.managed_by=self.request.user
             failure_report.save()
-            return Response({'message': 'Failure report has been dismissed.'}, status=status.HTTP_200_OK)
+            return Response({'message': 'Failure report is now managed by your account.'}, status=status.HTTP_200_OK)
 
-#ten widok służy do ponownego przypisania już wcześniej przypisanego failure reportu do warsztatu w przypadku gdy warsztat został usunięty lub menadżer postanowi go zmienić
-class FailureReportReassignAPIView(APIView):
+class FailureReportResignManagingAPIView(APIView):
     http_method_names = ['post']
-    permission_classes = [IsManager]
+    permission_classes = [IsManagerThatManagesSelectedFailureReport]
 
     def post(self, request, pk):
-        failure_report = FailureReport.objects.filter(pk=pk).first()
+        failure_report=FailureReport.objects.filter(pk=pk).first()
         if failure_report is None:
             raise NotFound("There is no failure report with provided ID.")
-        elif failure_report.status not in ('A','S'):
-            raise ValidationError('Failure report is not in ASSIGNED or STOPPED status.')
-        else:
-            serializer = FailureReportReassignSerializer(data=request.data, context={'failure_report': failure_report})
-            serializer.is_valid(raise_exception=True)
-            result = serializer.save()
-            return Response({'message': result}, status=status.HTTP_200_OK)
+
+        self.check_object_permissions(self.request, failure_report)
+        if failure_report.status in ('R','D'):
+            raise ValidationError(detail='Failure report is not in PENDING, ASSIGNED or STOPPED status.')
+
+        failure_report.managed_by=None
+        failure_report.save()
+        return Response({'message': 'Failure report is no longer managed by your account.'}, status=status.HTTP_200_OK)
 
 
 #widok do wypisywania wszystkich repair reportów/do filtrowania, tylko dla menadżera i admina
@@ -385,6 +449,14 @@ class RepairReportListAPIView(generics.ListAPIView):
     serializer_class = RepairReportListSerializer
     http_method_names = ['head', 'get']
     permission_classes = [IsManager | IsAdmin]
+
+    def get_queryset(self):
+        qs=super().get_queryset()
+        if self.request.user.role=='manager':
+            return qs.filter(failure_report__managed_by_id=self.request.user.id)
+        elif self.request.user.role=='admin':
+            return qs
+        return qs.none()
 
 #TODO:dokładnie wytestować poprawność wylistowanych repair reportów
 #widok ten służy do wyświetlenia wszystkich failure + repair przypisanych do warsztatu, w którym pracuje mechanik
@@ -447,7 +519,9 @@ class RepairReportRetrieveUpdateAPIView(generics.RetrieveUpdateAPIView):
                         return qs.filter(failure_report__workshop_id=mechanic_workshop_id)
                 elif self.request.method.lower() in ('put', 'patch'):
                     return qs.filter(failure_report__workshop_id=mechanic_workshop_id, status='A')
-        elif self.request.user.role in ('manager', 'admin'):
+        elif self.request.user.role=='manager':
+            return qs.filter(failure_report__managed_by_id=self.request.user.id)
+        elif self.request.user.role=='admin':
             return qs
         return qs.none()
 
@@ -476,19 +550,19 @@ class RepairReportRejectAPIView(APIView):
     permission_classes = [IsManager]
 
     def post(self, request, pk):
-        repair_report=RepairReport.objects.filter(pk=pk).first()
+        repair_report=RepairReport.objects.filter(pk=pk, failure_report__managed_by__id=self.request.user.id).first()
         if repair_report is None:
             raise NotFound("There is no repair report with provided ID.")
-        elif repair_report.status != 'R':
+        if repair_report.status != 'R':
             raise ValidationError(detail='Repair report is not in READY status.')
-        else:
-            serializer=RepairReportRejectionSerializer(data=request.data,context={'repair_report':repair_report})
-            serializer.is_valid(raise_exception=True)
-            with transaction.atomic():
-                serializer.save()
-                repair_report.status='A'
-                repair_report.save()
-                return Response({'message': 'Repair report has been rejected.'}, status=status.HTTP_200_OK)
+
+        serializer=RepairReportRejectionSerializer(data=request.data,context={'repair_report':repair_report})
+        serializer.is_valid(raise_exception=True)
+        with transaction.atomic():
+            serializer.save()
+            repair_report.status='A'
+            repair_report.save()
+            return Response({'message': 'Repair report has been rejected.'}, status=status.HTTP_200_OK)
 
 
 class RepairReportRejectionListAPIView(generics.ListAPIView):
@@ -503,7 +577,9 @@ class RepairReportRejectionListAPIView(generics.ListAPIView):
             mechanic_workshop_id=UserLocationAssignment.objects.filter(user_id=self.request.user.id,location__location_type='W').values_list('location_id',flat=True).first()
             if mechanic_workshop_id is not None:
                 return qs.filter(failure_report__workshop_id=mechanic_workshop_id)
-        elif self.request.user.role in ('manager', 'admin'):
+        elif self.request.user.role=='manager':
+            return qs.filter(failure_report__managed_by_id=self.request.user.id)
+        elif self.request.user.role =='admin':
             return qs
         return qs.none()
 
@@ -519,25 +595,10 @@ class RepairReportRejectionRetrieveAPIView(generics.RetrieveAPIView):
             mechanic_workshop_id=UserLocationAssignment.objects.filter(user_id=self.request.user.id,location__location_type='W').values_list('location_id',flat=True).first()
             if mechanic_workshop_id is not None:
                 return qs.filter(failure_report__workshop_id=mechanic_workshop_id)
-        elif self.request.user.role in ('manager', 'admin'):
+
+        elif self.request.user.role=='manager':
+            return qs.filter(failure_report__managed_by_id=self.request.user.id)
+        elif self.request.user.role=='admin':
             return qs
         return qs.none()
 
-class FailureReportResolveAPIView(APIView):
-    http_method_names = ['post']
-    permission_classes = [IsManager]
-#TODO: zaimplementować 409 gdy jest status nie odpowiada oczekiwanemu, dotyczy większej ilości endpointów
-    def post(self,request, pk):
-        failure_report=FailureReport.objects.filter(pk=pk,status='A').first()
-        if failure_report is None:
-            raise NotFound("There is no ASSIGNED failure report with provided ID.")
-        with transaction.atomic():
-            repair_report=failure_report.repair_report
-            vehicle=failure_report.vehicle
-            repair_report.status='H'
-            failure_report.status='R'
-            vehicle.status='A'
-            repair_report.save()
-            failure_report.save()
-            vehicle.save()
-        return Response({'message':'Repair report has been resolved.'},status=status.HTTP_200_OK)

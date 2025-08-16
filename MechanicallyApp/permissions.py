@@ -35,6 +35,16 @@ class IsManager(BasePermission):
             return True
         return False
 
+class IsManagerThatManagesSelectedFailureReport(BasePermission):
+    def has_permission(self, request, view):
+        if request.user.is_authenticated and request.user.role == 'manager':
+            return True
+        return False
+    def has_object_permission(self, request, view, obj):
+        if obj.managed_by == request.user:
+            return True
+        return False
+
 class IsStandard(BasePermission):
     def has_permission(self, request, view):
         if request.user.is_authenticated and request.user.role == 'standard':

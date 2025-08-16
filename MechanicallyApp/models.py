@@ -121,6 +121,7 @@ class FailureReport(models.Model):
     # noinspection PyUnresolvedReferences
     status=models.CharField(max_length=1,choices=FailureStatusChoices.choices,default=FailureStatusChoices.PENDING)
     last_status_change_date=models.DateTimeField(auto_now=True)
+    managed_by=models.ForeignKey('User',on_delete=models.SET_NULL,related_name='managed_failure_reports',null=True, blank=True)
 
 class RepairReport(models.Model):
     class RepairStatusChoices(models.TextChoices):
