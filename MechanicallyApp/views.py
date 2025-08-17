@@ -16,7 +16,8 @@ from .serializers import ManufacturerSerializer, LocationCreateRetrieveSerialize
 from rest_framework import generics, status
 from rest_framework.views import APIView
 from .permissions import IsManager, IsAdmin, \
-    IsAdminOrSuperuserAndTargetUserHasLowerRole, IsStandardAssignedToBranch, IsMechanicAssignedToWorkshop, IsManagerThatManagesSelectedFailureReport
+    IsAdminOrSuperuserAndTargetUserHasLowerRole, IsStandardAssignedToBranch, IsMechanicAssignedToWorkshop, \
+    IsManagerThatManagesSelectedFailureReport, IsAccountOwner
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import NotFound, ValidationError
 from django.db.models import Q
@@ -82,14 +83,17 @@ class LocationRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView
 
 
 #informacje o swojej lokalizacji może wypisywać standard i mechanik
-class UserLocationListAPIView(generics.ListAPIView):
-    serializer_class = UserNestedLocationAssignmentSerializer
+class UserLocationAPIView(APIView):
     permission_classes = [IsMechanicAssignedToWorkshop | IsStandardAssignedToBranch]
     http_method_names = ['head', 'get']
 
-    def get_queryset(self):
-        return UserLocationAssignment.objects.filter(user_id=self.request.user.id)
-
+    def get(self, request):
+        user_location_assignment = UserLocationAssignment.objects.filter(user_id=request.user.id).first()
+        if user_location_assignment is None:
+            raise NotFound('Your account is not assigned to any location.')
+        else:
+            serializer=UserNestedLocationAssignmentSerializer(user_location_assignment)
+            return Response(serializer.data, status=status.HTTP_200_OK)
 
 #ten widok umożliwia wypisywanie i tworzenie pojazdów przez menadżera oraz administratora
 #za pomocą odpowiednich query setów muszę zaimplementować wypisywanie pojazdów z siedziby standarda
@@ -231,6 +235,17 @@ class UserListCreateAPIView(generics.ListCreateAPIView):
             return qs
         return qs.none()
 
+class UserProfileAPIView(APIView):
+    permission_classes = [IsAccountOwner]
+    http_method_names = ['head', 'get']
+
+    def get(self, request):
+        user=User.objects.filter(pk=self.request.user.pk).first()
+        if user is None:
+            raise NotFound('There is no user with provided ID.')
+        self.check_object_permissions(self.request, user)
+        serializer=UserRetrieveSerializer(user, context={'request': request})
+        return Response(serializer.data,status=status.HTTP_200_OK)
 
 class UserRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
     queryset = User.objects.all()
@@ -425,7 +440,7 @@ class FailureReportBecomeManagerAPIView(APIView):
             failure_report.save()
             return Response({'message': 'Failure report is now managed by your account.'}, status=status.HTTP_200_OK)
 
-class FailureReportResignManagingAPIView(APIView):
+class FailureReportStopManagingAPIView(APIView):
     http_method_names = ['post']
     permission_classes = [IsManagerThatManagesSelectedFailureReport]
 

@@ -24,6 +24,41 @@ class UserTestCase(TestCase):
         UserLocationAssignment.objects.create(user=self.mechanic1, location=self.workshop)
         UserLocationAssignment.objects.create(user=self.mechanic2, location=self.workshop)
 
+    def test_superuser_can_retrieve_own_account_with_additional_fields(self):
+
+        client=APIClient()
+        client.force_authenticate(self.superuser)
+        response=client.get(reverse('user-profile'))
+        self.assertEqual(response.status_code,status.HTTP_200_OK)
+        self.assertEqual(response.json()['username'],self.superuser.username)
+        self.assertEqual(response.json()['is_active'],self.superuser.is_active)
+
+
+    def test_non_standard_or_mechanic_user_can_retrieve_own_account_without_location_field(self):
+
+        client=APIClient()
+        client.force_authenticate(self.manager)
+        response=client.get(reverse('user-profile'))
+        self.assertEqual(response.status_code,status.HTTP_200_OK)
+        self.assertEqual(response.json()['id'],str(self.manager.pk))
+        self.assertEqual(response.json().get('user_location_assignment',None),None)
+
+    def test_assigned_user_can_retrieve_own_account_with_location_field(self):
+
+        client=APIClient()
+        client.force_authenticate(self.standard1)
+        response=client.get(reverse('user-profile'))
+        self.assertEqual(response.status_code,status.HTTP_200_OK)
+        self.assertEqual(response.json()['id'],str(self.standard1.pk))
+        self.assertEqual(response.json()['user_location_assignment']['location']['name'],'SIEDZIBA')
+
+    def test_unassigned_standard_can_retrieve_own_account_with_empty_location_field(self):
+        client=APIClient()
+        client.force_authenticate(self.standard3)
+        response=client.get(reverse('user-profile'))
+        self.assertEqual(response.status_code,status.HTTP_200_OK)
+        self.assertEqual(response.json()['id'],str(self.standard3.pk))
+        self.assertEqual(response.json()['user_location_assignment'],None)
 
     def test_standard_user_can_list_branch_coworkers_only(self):
         user=User.objects.get(username="jannow1111")
