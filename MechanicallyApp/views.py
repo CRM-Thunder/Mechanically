@@ -386,20 +386,22 @@ class FailureReportResolveAPIView(APIView):
     def post(self,request, pk):
         failure_report=FailureReport.objects.filter(pk=pk).first()
         if failure_report is None:
-            raise NotFound("There is no ASSIGNED failure report with provided ID.")
+            raise NotFound("There is no failure report with provided ID.")
         self.check_object_permissions(self.request, failure_report)
         if failure_report.status!='A':
             raise ValidationError('Failure report is not in ASSIGNED status.')
+        repair_report = failure_report.repair_report
+        if repair_report.status!='R':
+            raise ValidationError('Repair report is not in READY status.')
         with transaction.atomic():
-            repair_report=failure_report.repair_report
             vehicle=failure_report.vehicle
             repair_report.status='H'
             failure_report.status='R'
-            vehicle.status='A'
+            vehicle.availability='A'
             repair_report.save()
             failure_report.save()
             vehicle.save()
-        return Response({'message':'Repair report has been resolved.'},status=status.HTTP_200_OK)
+        return Response({'message':'Failure report has been resolved.'},status=status.HTTP_200_OK)
 
 #ten widok służy do ponownego przypisania już wcześniej przypisanego failure reportu do warsztatu w przypadku gdy warsztat został usunięty lub menadżer postanowi go zmienić
 class FailureReportReassignAPIView(APIView):

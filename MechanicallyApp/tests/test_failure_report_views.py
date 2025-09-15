@@ -38,8 +38,7 @@ class FailureReportTestCase(TestCase):
         self.standard3 = User.objects.create_user(first_name="Arnold", last_name="Wasp", username="arnwas1111",
                                                   email="testowy2123122@gmail.com", password="test1234", role="standard",
                                                   phone_number="444414444")
-#TODO: stworzyć kolejnego managera i wytestować czy może modyfikować stan failure_reportów, którymi nie zarządza./
-# Do tego przetestować procedurę przypisywania i wypisywania z zarządzania failure reportem
+
         self.manager = User.objects.create_user(
             first_name="Szymon",
             last_name="Chasowski",
@@ -48,6 +47,17 @@ class FailureReportTestCase(TestCase):
             password="test1234",
             role="manager",
             phone_number="987654323"
+        )
+
+        self.manager2=User.objects.create_user(
+            first_name="Johnny",
+            last_name="Silverhand",
+            username="johsil1111",
+            email="testowy2077@gmail.com",
+            password="test1234",
+            role="manager",
+            phone_number="987654377"
+
         )
 
         self.mechanic = User.objects.create_user(
@@ -164,6 +174,33 @@ class FailureReportTestCase(TestCase):
             location=self.branch,
             manufacturer=self.man
         )
+        self.vehicle6 = Vehicle.objects.create(
+            vin='8GZCZ63B93S896564',
+            kilometers=500,
+            vehicle_type='CO',
+            year=2019,
+            vehicle_model="Lion City",
+            fuel_type='D',
+            availability='U',
+            location=self.branch,
+            manufacturer=self.man
+        )
+        self.failure_report4 = FailureReport.objects.create(
+            vehicle=self.vehicle6,
+            title="Brake issue",
+            description="Brakes are making noise",
+            report_author=self.standard,
+            status='A',
+            workshop=self.workshop2,
+            managed_by=self.manager
+        )
+        self.repair_report3 = RepairReport.objects.create(
+            failure_report=self.failure_report4,
+            condition_analysis="Wheelbrakes are deceased",
+            repair_action="New wheelbrakes have been installed",
+            cost=1500.00,
+            status='R'
+        )
 
         # Assign users to locations
         UserLocationAssignment.objects.create(user=self.standard, location=self.branch)
@@ -199,6 +236,7 @@ class FailureReportTestCase(TestCase):
             status='R', # RESOLVED
             managed_by=self.manager
         )
+
 
         # Create repair report for the assigned failure
         self.repair_report1 = RepairReport.objects.create(
@@ -350,7 +388,8 @@ class FailureReportTestCase(TestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         failure_reports = response.json()
-        self.assertEqual(len(failure_reports), 3)
+        self.assertEqual(len(failure_reports), 4)
+
 
     def test_admin_can_list_failure_reports(self):
         client = APIClient()
@@ -360,7 +399,7 @@ class FailureReportTestCase(TestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         failure_reports = response.json()
-        self.assertEqual(len(failure_reports), 3)
+        self.assertEqual(len(failure_reports), 4)
 
     def test_manager_can_retrieve_failure_report(self):
         client = APIClient()
@@ -399,7 +438,7 @@ class FailureReportTestCase(TestCase):
         response = client.get(reverse('failure-report-detail', kwargs={'pk': str(self.failure_report1.id)}))
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-#nie działa
+
     def test_manager_can_assign_failure_report(self):
         client = APIClient()
         client.force_authenticate(self.manager)
@@ -413,6 +452,14 @@ class FailureReportTestCase(TestCase):
         self.assertEqual(failure_report.status, 'A')  # ASSIGNED
         self.assertEqual(failure_report.workshop, self.workshop)
         self.assertTrue(RepairReport.objects.filter(failure_report=failure_report).exists())
+
+    def test_manager_cannot_assign_failure_report_not_managed_by_himself(self):
+        client = APIClient()
+        client.force_authenticate(self.manager2)
+        response = client.post(reverse('failure-report-assign', kwargs={'pk': self.failure_report1.pk}), data={
+            "workshop": self.workshop.pk
+        })
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_standard_user_cannot_assign_failure_report(self):
         client = APIClient()
@@ -443,6 +490,14 @@ class FailureReportTestCase(TestCase):
         failure_report = FailureReport.objects.get(id=self.failure_report1.id)
         self.assertEqual(failure_report.status, 'D')  # DISMISSED
 
+    def test_manager_cannot_dismiss_failure_report_not_managed_by_himself(self):
+        client = APIClient()
+        client.force_authenticate(self.manager2)
+        response = client.post(reverse('failure-report-dismiss', kwargs={'pk': self.failure_report1.pk}), data={
+            "workshop": self.workshop.pk
+        })
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
     def test_standard_user_cannot_dismiss_failure_report(self):
         client = APIClient()
         client.force_authenticate(self.standard)
@@ -451,9 +506,46 @@ class FailureReportTestCase(TestCase):
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-    def test_manager_can_reassign_failure_report(self):
-        # Create another workshop
+    def test_manager_can_resolve_assigned_failure_report_with_ready_repair_report(self):
+        client = APIClient()
+        client.force_authenticate(self.manager)
 
+        response = client.post(reverse('failure-report-resolve',kwargs={'pk':self.failure_report4.pk}))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        fr=FailureReport.objects.get(id=self.failure_report4.id)
+        rr=RepairReport.objects.get(id=self.repair_report3.id)
+        veh=Vehicle.objects.get(id=self.vehicle6.id)
+        self.assertEqual(fr.status, 'R')
+        self.assertEqual(rr.status, 'H')
+        self.assertEqual(veh.availability,'A')
+        self.assertIn('Failure report has been resolved.',str(response.json()))
+
+    def test_manager_cannot_resolve_failure_report_managed_by_other_manager(self):
+        client = APIClient()
+        client.force_authenticate(self.manager2)
+        response=client.post(reverse('failure-report-resolve',kwargs={'pk':self.failure_report4.pk}))
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_manager_cannot_resolve_pending_failure_report(self):
+        client = APIClient()
+        client.force_authenticate(self.manager)
+        response=client.post(reverse('failure-report-resolve',kwargs={'pk':self.failure_report1.pk}))
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('Failure report is not in ASSIGNED status.',str(response.json()))
+
+    def test_manager_cannot_resolve_failure_report_with_not_ready_repair_report(self):
+        self.repair_report3.status = 'A'
+        self.repair_report3.save()
+        client = APIClient()
+        client.force_authenticate(self.manager)
+        response = client.post(reverse('failure-report-resolve', kwargs={'pk': self.failure_report4.pk}))
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('Repair report is not in READY status.', str(response.json()))
+        self.repair_report3.status = 'R'
+        self.repair_report3.save()
+
+
+    def test_manager_can_reassign_failure_report(self):
         client = APIClient()
         client.force_authenticate(self.manager)
 
@@ -463,13 +555,19 @@ class FailureReportTestCase(TestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        # Check that failure report was updated
         failure_report = FailureReport.objects.get(id=self.failure_report2.id)
         self.assertEqual(failure_report.status, 'A')  # ASSIGNED
         self.assertEqual(failure_report.workshop, self.workshop)
 
+    def test_manager_cannot_reassign_failure_report_not_managed_by_himself(self):
+        client = APIClient()
+        client.force_authenticate(self.manager2)
+        response = client.post(reverse('failure-report-reassign', kwargs={'pk': self.failure_report2.pk}), data={
+            "workshop": self.workshop.pk
+        })
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
     def test_standard_user_cannot_reassign_failure_report(self):
-        # Create another workshop
 
         client = APIClient()
         client.force_authenticate(self.standard)
@@ -497,3 +595,111 @@ class FailureReportTestCase(TestCase):
             "workshop": str(self.workshop2.id)
         })
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+
+    def test_manager_can_manage_unmanaged_failure_report(self):
+        client = APIClient()
+        client.force_authenticate(self.manager2)
+        failure_report=FailureReport.objects.create(
+            vehicle=self.vehicle2,
+            title="Engine failure",
+            description="Engine is not starting properly",
+            report_author=self.standard,
+            status='P')
+        response=client.post(reverse('failure-report-manage',kwargs={'pk':failure_report.pk}))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        failure_report = FailureReport.objects.get(id=failure_report.id)
+        self.assertEqual(failure_report.managed_by, self.manager2)
+
+    def test_manager_cannot_manage_managed_failure_report(self):
+        client = APIClient()
+        client.force_authenticate(self.manager2)
+        response = client.post(reverse('failure-report-manage', kwargs={'pk': self.failure_report1.pk}))
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('Failure report is already managed by another manager.', str(response.json()))
+
+    def test_manager_cannot_manage_resolved_failure_report(self):
+        client = APIClient()
+        client.force_authenticate(self.manager2)
+        failure_report = FailureReport.objects.create(
+            vehicle=self.vehicle2,
+            title="Engine failure",
+            description="Engine is not starting properly",
+            report_author=self.standard,
+            status='R')
+        response=client.post(reverse('failure-report-manage', kwargs={'pk': failure_report.pk}))
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('Failure report is not in PENDING, ASSIGNED or STOPPED status.', str(response.json()))
+
+    def test_manager_cannot_manage_dismissed_failure_report(self):
+        client = APIClient()
+        client.force_authenticate(self.manager2)
+        failure_report = FailureReport.objects.create(
+            vehicle=self.vehicle2,
+            title="Engine failure",
+            description="Engine is not starting properly",
+            report_author=self.standard,
+            status='D')
+        response=client.post(reverse('failure-report-manage', kwargs={'pk': failure_report.pk}))
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('Failure report is not in PENDING, ASSIGNED or STOPPED status.', str(response.json()))
+
+    def test_manager_cannot_manage_failure_report_already_managed_by_himself(self):
+        client = APIClient()
+        client.force_authenticate(self.manager)
+        response = client.post(reverse('failure-report-manage', kwargs={'pk': self.failure_report1.pk}))
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('Failure report is already managed by you.', str(response.json()))
+
+    def test_manager_can_release_failure_report_he_manages_himself(self):
+        client = APIClient()
+        client.force_authenticate(self.manager)
+        response=client.post(reverse('failure-report-release', kwargs={'pk': self.failure_report1.pk}))
+        print(response.json())
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        failure=FailureReport.objects.get(pk=self.failure_report1.pk)
+        self.assertEqual(failure.managed_by, None)
+
+    def test_manager_cannot_release_failure_report_that_is_not_managed(self):
+        client = APIClient()
+        client.force_authenticate(self.manager2)
+        failure_report = FailureReport.objects.create(
+            vehicle=self.vehicle2,
+            title="Engine failure",
+            description="Engine is not starting properly",
+            report_author=self.standard,
+            status='P')
+        response=client.post(reverse('failure-report-release', kwargs={'pk': failure_report.pk}))
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertIn('You do not have permission to perform this action.', str(response.json()))
+
+    def test_manager_cannot_release_failure_report_managed_by_other_manager(self):
+        client = APIClient()
+        client.force_authenticate(self.manager2)
+        response=client.post(reverse('failure-report-release', kwargs={'pk': self.failure_report1.pk}))
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertIn('You do not have permission to perform this action.', str(response.json()))
+
+    def test_manager_cannot_release_resolved_failure_report(self):
+        client = APIClient()
+        client.force_authenticate(self.manager)
+        response=client.post(reverse('failure-report-release', kwargs={'pk': self.failure_report3.pk}))
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('Failure report is not in PENDING, ASSIGNED or STOPPED status.', str(response.json()))
+
+    def test_manager_cannot_release_dismissed_failure_report(self):
+        client = APIClient()
+        client.force_authenticate(self.manager)
+        failure_report = FailureReport.objects.create(
+            vehicle=self.vehicle2,
+            title="Engine failure",
+            description="Engine is not starting properly",
+            report_author=self.standard,
+            status='D',
+            managed_by=self.manager
+        )
+        response=client.post(reverse('failure-report-release', kwargs={'pk': failure_report.pk}))
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('Failure report is not in PENDING, ASSIGNED or STOPPED status.', str(response.json()))
+
+
