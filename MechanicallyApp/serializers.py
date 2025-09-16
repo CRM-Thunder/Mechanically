@@ -509,8 +509,10 @@ class RepairReportRejectionListSerializer(serializers.ModelSerializer):
         read_only_fields=['id','repair_report','title','rejection_date']
 
     def to_representation(self,instance):
+        request=self.context.get('request')
+
         rep=super().to_representation(instance)
-        if instance.role=='mechanic':
+        if request.user.role=='mechanic':
             rep.pop('repair_report')
         return rep
 
@@ -521,8 +523,9 @@ class RepairReportRejectionRetrieveSerializer(serializers.ModelSerializer):
         read_only_fields=['id','repair_report','title','rejection_date','reason']
 
     def to_representation(self, instance):
+        request=self.context.get('request')
         rep = super().to_representation(instance)
-        if instance.role == 'mechanic':
+        if request.user.role == 'mechanic':
             rep.pop('repair_report')
         return rep
 
@@ -532,7 +535,6 @@ class RepairReportRejectionSerializer(serializers.ModelSerializer):
         fields=['id','title','rejection_date','reason']
         read_only_fields=['id','rejection_date']
 
-
     def validate_title(self,value):
         natural_text_validator(value)
         return value
@@ -540,3 +542,11 @@ class RepairReportRejectionSerializer(serializers.ModelSerializer):
     def validate_reason(self,value):
         natural_text_validator(value)
         return value
+
+    def save(self, **kwargs):
+        title=self.validated_data.get('title')
+        reason=self.validated_data.get('reason')
+        repair_report=self.context.get('repair_report')
+        rejection=RepairReportRejection.objects.create(title=title,repair_report=repair_report,reason=reason)
+        rejection.save()
+        return rejection

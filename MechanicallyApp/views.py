@@ -551,7 +551,7 @@ class RepairReportSetAsReadyAPIView(APIView):
         mechanic_workshop_id=UserLocationAssignment.objects.filter(user_id=self.request.user.id,location__location_type='W').values_list('location_id',flat=True).first()
         if mechanic_workshop_id is None:
             raise NotFound("You are not assigned to any location.")
-        repair_report=RepairReport.objects.filter(pk=pk,workshop_id=mechanic_workshop_id).first()
+        repair_report=RepairReport.objects.filter(pk=pk,failure_report__workshop_id=mechanic_workshop_id).first()
         if repair_report is None:
             raise NotFound("There is no repair report with provided ID.")
         elif repair_report.status != 'A':
@@ -567,7 +567,7 @@ class RepairReportRejectAPIView(APIView):
     permission_classes = [IsManager]
 
     def post(self, request, pk):
-        repair_report=RepairReport.objects.filter(pk=pk, failure_report__managed_by__id=self.request.user.id).first()
+        repair_report=RepairReport.objects.filter(pk=pk, failure_report__managed_by_id=self.request.user.id).first()
         if repair_report is None:
             raise NotFound("There is no repair report with provided ID.")
         if repair_report.status != 'R':
@@ -588,14 +588,19 @@ class RepairReportRejectionListAPIView(generics.ListAPIView):
     permission_classes = [IsManager | IsAdmin |IsMechanicAssignedToWorkshop]
     http_method_names = ['head', 'get']
 
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
+
     def get_queryset(self):
         qs=super().get_queryset()
         if self.request.user.role == 'mechanic':
             mechanic_workshop_id=UserLocationAssignment.objects.filter(user_id=self.request.user.id,location__location_type='W').values_list('location_id',flat=True).first()
             if mechanic_workshop_id is not None:
-                return qs.filter(failure_report__workshop_id=mechanic_workshop_id)
+                return qs.filter(repair_report__failure_report__workshop_id=mechanic_workshop_id)
         elif self.request.user.role=='manager':
-            return qs.filter(failure_report__managed_by_id=self.request.user.id)
+            return qs.filter(repair_report__failure_report__managed_by_id=self.request.user.id)
         elif self.request.user.role =='admin':
             return qs
         return qs.none()
@@ -606,15 +611,20 @@ class RepairReportRejectionRetrieveAPIView(generics.RetrieveAPIView):
     permission_classes = [IsManager | IsAdmin | IsMechanicAssignedToWorkshop]
     http_method_names = ['head', 'get']
 
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
+
     def get_queryset(self):
         qs=super().get_queryset()
         if self.request.user.role == 'mechanic':
             mechanic_workshop_id=UserLocationAssignment.objects.filter(user_id=self.request.user.id,location__location_type='W').values_list('location_id',flat=True).first()
             if mechanic_workshop_id is not None:
-                return qs.filter(failure_report__workshop_id=mechanic_workshop_id)
+                return qs.filter(repair_report__failure_report__workshop_id=mechanic_workshop_id)
 
         elif self.request.user.role=='manager':
-            return qs.filter(failure_report__managed_by_id=self.request.user.id)
+            return qs.filter(repair_report__failure_report__managed_by_id=self.request.user.id)
         elif self.request.user.role=='admin':
             return qs
         return qs.none()
