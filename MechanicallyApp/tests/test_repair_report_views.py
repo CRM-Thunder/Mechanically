@@ -406,3 +406,93 @@ class RepairReportTestCase(TestCase):
         response=client.get(reverse('repair-report-rejection-list'))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.json()),3)
+
+    def test_manager_cannot_reject_active_or_historic_repair_report(self):
+        client=APIClient()
+        client.force_authenticate(user=self.manager)
+        response = client.post(reverse('repair-report-reject', kwargs={'pk': self.repair_report5.pk}),
+                               data={'title': 'tytul', 'reason': 'jakis powod'})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        response = client.post(reverse('repair-report-reject', kwargs={'pk': self.repair_report6.pk}),
+                               data={'title': 'tytul', 'reason': 'jakis powod'})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_manager_cannot_reject_repair_report_managed_by_other_manager(self):
+        client=APIClient()
+        client.force_authenticate(user=self.manager)
+        response = client.post(reverse('repair-report-reject', kwargs={'pk': self.repair_report1.pk}),
+                               data={'title': 'tytul', 'reason': 'jakis powod'})
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_admin_can_list_all_repair_reports(self):
+        client=APIClient()
+        client.force_authenticate(user=self.admin)
+        response = client.get(reverse('repair-report-list'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.json()), 6)
+
+    def test_manager_can_list_all_repair_reports_he_manages(self):
+        client=APIClient()
+        client.force_authenticate(user=self.manager)
+        response = client.get(reverse('repair-report-list'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.json()), 5)
+
+        client = APIClient()
+        client.force_authenticate(user=self.manager2)
+        response = client.get(reverse('repair-report-list'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.json()), 1)
+
+    def test_manager_can_retrieve_repair_report_he_manages(self):
+        client=APIClient()
+        client.force_authenticate(user=self.manager2)
+        response = client.get(reverse('repair-report-detail', kwargs={'pk': self.repair_report1.pk}))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json()['id'],str(self.repair_report1.pk))
+
+    def test_manager_cannot_retrieve_repair_report_he_not_manages(self):
+        client=APIClient()
+        client.force_authenticate(user=self.manager2)
+        response = client.get(reverse('repair-report-detail', kwargs={'pk': self.repair_report2.pk}))
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_standard_cannot_list_repair_reports(self):
+        client=APIClient()
+        client.force_authenticate(user=self.standard)
+        response = client.get(reverse('repair-report-list'))
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_standard_cannot_retrieve_repair_report(self):
+        client=APIClient()
+        client.force_authenticate(user=self.standard)
+        response=client.get(reverse('repair-report-detail', kwargs={'pk': self.repair_report1.pk}))
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_mechanic_can_update_active_repair_report_in_his_workshop(self):
+        client=APIClient()
+        client.force_authenticate(user=self.mechanic)
+        response=client.patch(reverse('repair-report-detail', kwargs={'pk': self.repair_report1.pk}),data={'cost': "400"})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(RepairReport.objects.get(pk=self.repair_report1.pk).cost,400)
+
+    def test_mechanic_cannot_update_ready_repair_report_in_his_workshop(self):
+        client=APIClient()
+        client.force_authenticate(user=self.mechanic)
+        response=client.patch(reverse('repair-report-detail', kwargs={'pk': self.repair_report3.pk}),data={'cost': "400"})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_mechanic_cannot_update_historic_repair_report_in_his_workshop(self):
+        client = APIClient()
+        client.force_authenticate(user=self.mechanic)
+        response = client.patch(reverse('repair-report-detail', kwargs={'pk': self.repair_report4.pk}),
+                                data={'cost': "400"})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_mechanic_cannot_update_active_repair_report_in_other_workshop(self):
+        client = APIClient()
+        client.force_authenticate(user=self.mechanic)
+        response = client.patch(reverse('repair-report-detail', kwargs={'pk': self.repair_report5.pk}),
+                                data={'cost': "400"})
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)

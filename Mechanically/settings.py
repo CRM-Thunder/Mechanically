@@ -147,7 +147,20 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_RENDERER_CLASSES': [
         'rest_framework.renderers.JSONRenderer',
-    ]
+    ],
+    'DEFAULT_THROTTLE_CLASSES':[
+        'rest_framework.throttling.UserRateThrottle',
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.ScopedRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'user': '30/minute',
+        'anon': '5/minute',
+        'password_change':'5/hour',
+        'password_reset_request':'3/hour',
+        'password_reset':'5/hour',
+        'account_activation': '5/hour',
+    }
 }
 
 #ustawienie tylko do testow

@@ -1,5 +1,7 @@
 from django.db import transaction
 from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
+
 from .models import Manufacturer, Location, UserLocationAssignment, Vehicle, User, FailureReport, RepairReport, \
     RepairReportRejection
 from .serializers import ManufacturerSerializer, LocationCreateRetrieveSerializer, \
@@ -164,6 +166,8 @@ class VehicleRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView)
 class AccountActivationAPIView(APIView):
     http_method_names = ['post']
     permission_classes = [~IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope='account_activation'
 
     def post(self, request):
         serializer = AccountActivationSerializer(data=request.data)
@@ -177,7 +181,8 @@ class AccountActivationAPIView(APIView):
 class ResetPasswordRequestAPIView(APIView):
     http_method_names = ['post']
     permission_classes = [~IsAuthenticated]
-
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'password_reset_request'
     def post(self, request):
         serializer = ResetPasswordRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -189,7 +194,8 @@ class ResetPasswordRequestAPIView(APIView):
 class ResetPasswordAPIView(APIView):
     http_method_names = ['post']
     permission_classes = [~IsAuthenticated]
-
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'password_reset'
     def post(self, request):
         serializer = ResetPasswordSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -535,7 +541,7 @@ class RepairReportRetrieveUpdateAPIView(generics.RetrieveUpdateAPIView):
                     else:
                         return qs.filter(failure_report__workshop_id=mechanic_workshop_id)
                 elif self.request.method.lower() in ('put', 'patch'):
-                    return qs.filter(failure_report__workshop_id=mechanic_workshop_id, status='A')
+                    return qs.filter(failure_report__workshop_id=mechanic_workshop_id)
         elif self.request.user.role=='manager':
             return qs.filter(failure_report__managed_by_id=self.request.user.id)
         elif self.request.user.role=='admin':

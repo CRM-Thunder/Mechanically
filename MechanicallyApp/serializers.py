@@ -491,7 +491,7 @@ class RepairReportRetrieveUpdateSerializer(serializers.ModelSerializer):
     def validate(self,data):
         if self.instance.status!='A':
             raise serializers.ValidationError('Repair report cannot be modified if not in ACTIVE status.')
-        return data
+        return super().validate(data)
 
 class RepairReportListSerializer(serializers.ModelSerializer):
     title=serializers.CharField(source='failure_report.title',read_only=True)
