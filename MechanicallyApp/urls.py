@@ -15,6 +15,7 @@ urlpatterns = [
     path('users/activate/', views.AccountActivationAPIView.as_view(), name='user-activation'),
     path('users/reset-password/', views.ResetPasswordAPIView.as_view(), name='user-reset-password'),
     path('users/reset-password-request/', views.ResetPasswordRequestAPIView.as_view(), name='user-reset-password-request'),
+    path('users/password-change/', views.PasswordChangeAPIView.as_view(), name='user-password-change'),
     path('users/', views.UserListCreateAPIView.as_view(), name='user-list'),
     path('users/me/', views.UserProfileAPIView.as_view(), name='user-profile'),
     path('users/me/location/', views.UserLocationAPIView.as_view(), name='assigned-location'),

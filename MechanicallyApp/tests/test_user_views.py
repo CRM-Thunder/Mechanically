@@ -1,3 +1,4 @@
+from django.contrib.auth import authenticate
 from django.test import TestCase
 from MechanicallyApp.models import User, Location, UserLocationAssignment
 from rest_framework import status
@@ -10,7 +11,7 @@ class UserTestCase(TestCase):
         self.superuser=User.objects.create_superuser(first_name="Grzegorz", last_name="Kowalski", username="grzkow1111", email="testowy4@gmail.com", password="test1234", role="admin", phone_number="111111111")
         self.admin1=User.objects.create_user(first_name="Piotr", last_name="Testowy", username="piotes1111", email="testowy@gmail.com", password="test1234", role="admin", phone_number="222222222")
         self.admin2=User.objects.create_user(first_name="Albrecht", last_name="Entrati", username="albent1111",email="testowy75@gmail.com", password="test1234", role="admin", phone_number="121212121")
-        self.standard1=User.objects.create_user(first_name="Jan", last_name="Nowak", username="jannow1111", email="testowy2@gmail.com", password="test1234", role="standard", phone_number="333333333")
+        self.standard1=User.objects.create_user(first_name="Jan", last_name="Nowak", username="jannow1111", email="testowy2@gmail.com", password="test123456789", role="standard", phone_number="333333333")
         self.standard2=User.objects.create_user(first_name="Krzysztof", last_name="Pawlak", username="krzpaw1111", email="testowy22@gmail.com",password="test1234", role="standard", phone_number="444444444")
         self.standard3=User.objects.create_user(first_name="Kamil", last_name="Grosicki", username="kamgro1111", email="testowy23@gmail.com",password="test1234", role="standard", phone_number="555555555")
         self.manager=User.objects.create_user(first_name="Szymon", last_name="Chasowski", username="szycha1111", email="testowy3@gmail.com",password="test1234", role="manager", phone_number="666666666")
@@ -540,4 +541,22 @@ class UserTestCase(TestCase):
         response=client.delete(reverse('user-detail',kwargs={'pk': admin.pk}))
         assert response.status_code==status.HTTP_204_NO_CONTENT
         assert User.objects.filter(username="albent1111").exists()==False
+
+    def test_user_can_change_his_password(self):
+        client=APIClient()
+        client.force_authenticate(self.standard1)
+        response=client.post(reverse('user-password-change'),data={'old_password':'test123456789','new_password':'Kaliniak123456','confirm_password':'Kaliniak123456'})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        user=authenticate(username=self.standard1.username, password='Kaliniak123456')
+        self.assertEqual(user,self.standard1)
+
+    def test_user_cannot_set_the_same_password_during_change(self):
+        client = APIClient()
+        client.force_authenticate(self.standard1)
+        response = client.post(reverse('user-password-change'),
+                               data={'old_password': 'test123456789', 'new_password': 'test123456789',
+                                     'confirm_password': 'test123456789'})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('This password is already used.',str(response.json()))
 

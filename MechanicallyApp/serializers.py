@@ -1,3 +1,4 @@
+from django.contrib.auth import authenticate
 from django.contrib.auth.tokens import default_token_generator
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
@@ -194,7 +195,6 @@ class AccountActivationSerializer(serializers.Serializer):
     token = serializers.CharField(max_length=100)
     password = serializers.CharField(max_length=128)
     confirm_password=serializers.CharField(max_length=128)
-
     _user_instance=None
     def validate(self, data):
         user_id = data.get('user')
@@ -251,20 +251,51 @@ class ResetPasswordSerializer(serializers.Serializer):
         user = User.objects.filter(pk=user_id, is_active=True).first()
         if user is None or not default_token_generator.check_token(user, token):
             raise serializers.ValidationError('Invalid user or token.')
-
-        if password != confirm_password:
-            raise serializers.ValidationError('Passwords do not match.')
         try:
             validate_password(password, user)
         except DjangoValidationError as err:
             raise serializers.ValidationError({'password': err.messages})
 
+        if password != confirm_password:
+            raise serializers.ValidationError('Passwords do not match.')
         self._user_instance = user
         return data
 
     def save(self):
         user = self._user_instance
         user.set_password(self.validated_data.get('password'))
+        user.save()
+        return "Password has been changed."
+
+
+class PasswordChangeSerializer(serializers.Serializer):
+    old_password = serializers.CharField(max_length=128)
+    new_password = serializers.CharField(max_length=128)
+    confirm_password=serializers.CharField(max_length=128)
+
+    def validate(self, data):
+        user=self.context.get('user')
+        old_password=data.get('old_password')
+        new_password=data.get('new_password')
+        confirm_password=data.get('confirm_password')
+        user=authenticate(username=user.username, password=old_password)
+        if user is None:
+            raise serializers.ValidationError('Invalid password.')
+
+        try:
+            validate_password(new_password, user)
+        except DjangoValidationError as err:
+            raise serializers.ValidationError({'password': err.messages})
+
+        if new_password == old_password:
+            raise serializers.ValidationError('This password is already used.')
+        if new_password != confirm_password:
+            raise serializers.ValidationError('Passwords do not match.')
+        return data
+
+    def save(self, **kwargs):
+        user=self.context.get('user')
+        user.set_password(self.validated_data.get('new_password'))
         user.save()
         return "Password has been changed."
 

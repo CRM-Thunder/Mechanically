@@ -14,7 +14,8 @@ from .serializers import ManufacturerSerializer, LocationCreateRetrieveSerialize
     FailureReportRetrieveSerializer, FailureReportAssignSerializer, \
     FailureReportReassignSerializer, \
     RepairReportRetrieveUpdateSerializer, RepairReportListSerializer, LocationUpdateSerializer, LocationListSerializer, \
-    RepairReportRejectionSerializer, RepairReportRejectionListSerializer, RepairReportRejectionRetrieveSerializer
+    RepairReportRejectionSerializer, RepairReportRejectionListSerializer, RepairReportRejectionRetrieveSerializer,\
+    PasswordChangeSerializer
 from rest_framework import generics, status
 from rest_framework.views import APIView
 from .permissions import IsManager, IsAdmin, \
@@ -198,6 +199,22 @@ class ResetPasswordAPIView(APIView):
     throttle_scope = 'password_reset'
     def post(self, request):
         serializer = ResetPasswordSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        result = serializer.save()
+        return Response({'message': result}, status=status.HTTP_200_OK)
+
+#widok służący do zmiany hasła przez zalogowanego użytkownika
+class PasswordChangeAPIView(APIView):
+    http_method_names = ['post']
+    permission_classes = [IsAccountOwner]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'password_change'
+    def post(self, request):
+        user = User.objects.filter(pk=self.request.user.pk).first()
+        if user is None:
+            raise NotFound('There is no user with provided ID.')
+        self.check_object_permissions(self.request, user)
+        serializer=PasswordChangeSerializer(data=request.data, context={'user': self.request.user})
         serializer.is_valid(raise_exception=True)
         result = serializer.save()
         return Response({'message': result}, status=status.HTTP_200_OK)

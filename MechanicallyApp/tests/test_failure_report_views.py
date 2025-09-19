@@ -655,7 +655,6 @@ class FailureReportTestCase(TestCase):
         client = APIClient()
         client.force_authenticate(self.manager)
         response=client.post(reverse('failure-report-release', kwargs={'pk': self.failure_report1.pk}))
-        print(response.json())
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         failure=FailureReport.objects.get(pk=self.failure_report1.pk)
         self.assertEqual(failure.managed_by, None)
