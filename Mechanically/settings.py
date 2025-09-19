@@ -85,13 +85,12 @@ DATABASES = {
         'PASSWORD': env('DB_PASSWORD'),
         'HOST': env('DB_HOST'),
         'PORT': env('DB_PORT'),
-        'OPTIONS':{
-            'ssl':{
-                'ca': env('CA_CERT'),
-                #zmienić na VERIFY_CA podczas opisywania pracy
-                'ssl-mode':'PREFERRED'
-            }
-        }
+        #'OPTIONS':{
+        #    'ssl':{
+        #        'ca': env('CA_CERT'),
+        #        'ssl-mode':'VERIFY_CA'
+        #    }
+        #}
     }
 }
 
