@@ -44,7 +44,7 @@ jobs:
         echo "DB_NAME=${{matrix.db}}" >> .env
         echo "DB_USER=${{secrets.DB_USER}}" >> .env
         echo "DB_PASSWORD=${{secrets.DB_PASSWORD}}" >> .env
-        echo "DB_HOST="127.0.0.1" >> .env
+        echo "DB_HOST=127.0.0.1" >> .env
         echo "DB_PORT=${{matrix.db_port}}" >> .env
         echo "EMAIL_HOST=${{secrets.EMAIL_HOST}}" >> .env
         echo "EMAIL_PORT=${{secrets.EMAIL_PORT}}" >> .env
