@@ -51,6 +51,12 @@ jobs:
         echo "EMAIL_HOST_USER=${{secrets.EMAIL_HOST_USER}}" >> .env
         echo "EMAIL_HOST_PASSWORD=${{secrets.EMAIL_HOST_PASSWORD}}" >> .env
         echo "CA_CERT=${{secrets.CA_CERT}}" >> .env
+
+    - name: Migrate to database
+      run: |
+        python manage.py makemigrations
+        python manage.py migrate
+
     - name: Run Tests
       run: |
         python manage.py test
