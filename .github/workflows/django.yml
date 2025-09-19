@@ -20,7 +20,6 @@ jobs:
         image: mysql:5.7
         env:
           MYSQL_ROOT_PASSWORD: ${{secrets.DB_PASSWORD}}
-          MYSQL_DATABASE: ${{secrets.DB_NAME}}
         ports:
           - 3306:3306
         options: >-
@@ -42,11 +41,11 @@ jobs:
     - name: Create .env file
       run: |
         echo "SECRET_KEY=${{secrets.SECRET_KEY}}" >> .env
-        echo "DB_NAME=${{secrets.DB_NAME}}" >> .env
+        echo "DB_NAME=${{matrix.db}}" >> .env
         echo "DB_USER=${{secrets.DB_USER}}" >> .env
         echo "DB_PASSWORD=${{secrets.DB_PASSWORD}}" >> .env
-        echo "DB_HOST=${{secrets.DB_HOST}}" >> .env
-        echo "DB_PORT=${{secrets.DB_PORT}}" >> .env
+        echo "DB_HOST="127.0.0.1" >> .env
+        echo "DB_PORT=${{matrix.db_port}}" >> .env
         echo "EMAIL_HOST=${{secrets.EMAIL_HOST}}" >> .env
         echo "EMAIL_PORT=${{secrets.EMAIL_PORT}}" >> .env
         echo "EMAIL_HOST_USER=${{secrets.EMAIL_HOST_USER}}" >> .env
