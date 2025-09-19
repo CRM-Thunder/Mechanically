@@ -37,7 +37,7 @@ jobs:
         echo "EMAIL_PORT=${{secrets.EMAIL_PORT}}" >> .env
         echo "EMAIL_HOST_USER=${{secrets.EMAIL_HOST_USER}}" >> .env
         echo "EMAIL_HOST_PASSWORD=${{secrets.EMAIL_HOST_PASSWORD}}" >> .env
-        echo "CA_CERT=${{secrets.CA_CERT}} >> .env
+        echo "CA_CERT=${{secrets.CA_CERT}}" >> .env
     - name: Run Tests
       run: |
         python manage.py test
