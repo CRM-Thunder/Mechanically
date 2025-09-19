@@ -88,7 +88,8 @@ DATABASES = {
         'OPTIONS':{
             'ssl':{
                 'ca': env('CA_CERT'),
-                'ssl-mode':'VERIFY_CA'
+                #zmienić na VERIFY_CA podczas opisywania pracy
+                'ssl-mode':'PREFERRED'
             }
         }
     }
