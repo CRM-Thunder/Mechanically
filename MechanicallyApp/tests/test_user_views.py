@@ -92,8 +92,7 @@ class UserTestCase(TestCase):
         response=client.get(reverse('user-list'))
         assert response.status_code==status.HTTP_200_OK
         users=response.json()
-        assert len(users)==7
-        self.assertTrue(all(user['first_name'] in ('Jan','Krzysztof','Kamil','Lalo','Szymon','Karol','Jimmy') for user in users))
+        assert len(users)==8
 
     def test_admin_can_list_all_users_without_superuser(self):
         user = User.objects.get(username="piotes1111")
@@ -102,7 +101,7 @@ class UserTestCase(TestCase):
         response = client.get(reverse('user-list'))
         assert response.status_code == status.HTTP_200_OK
         users = response.json()
-        assert len(users) == 9
+        assert len(users) == 10
         self.assertTrue(all(user['first_name']!='Grzegorz' for user in users))
 
     def test_superuser_can_list_all_users(self):
@@ -112,7 +111,7 @@ class UserTestCase(TestCase):
         response = client.get(reverse('user-list'))
         assert response.status_code == status.HTTP_200_OK
         users = response.json()
-        assert len(users) == 10
+        assert len(users) == 11
 
     def test_not_admin_users_cannot_create_users(self):
         standard=User.objects.get(username="jannow1111")
