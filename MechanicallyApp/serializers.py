@@ -193,8 +193,8 @@ class UserRetrieveSerializer(serializers.ModelSerializer):
 class AccountActivationSerializer(serializers.Serializer):
     user=serializers.UUIDField(write_only=True,required=True)
     token = serializers.CharField(max_length=100)
-    password = serializers.CharField(max_length=128)
-    confirm_password=serializers.CharField(max_length=128)
+    password = serializers.CharField(max_length=256)
+    confirm_password=serializers.CharField(max_length=256)
     _user_instance=None
     def validate(self, data):
         user_id = data.get('user')
@@ -239,8 +239,8 @@ class ResetPasswordRequestSerializer(serializers.Serializer):
 class ResetPasswordSerializer(serializers.Serializer):
     user = serializers.UUIDField(write_only=True, required=True)
     token = serializers.CharField(max_length=100)
-    password = serializers.CharField(max_length=128)
-    confirm_password = serializers.CharField(max_length=128)
+    password = serializers.CharField(max_length=256)
+    confirm_password = serializers.CharField(max_length=256)
     _user_instance = None
 
     def validate(self, data):
@@ -269,9 +269,9 @@ class ResetPasswordSerializer(serializers.Serializer):
 
 
 class PasswordChangeSerializer(serializers.Serializer):
-    old_password = serializers.CharField(max_length=128)
-    new_password = serializers.CharField(max_length=128)
-    confirm_password=serializers.CharField(max_length=128)
+    old_password = serializers.CharField(max_length=256)
+    new_password = serializers.CharField(max_length=256)
+    confirm_password=serializers.CharField(max_length=256)
 
     def validate(self, data):
         user=self.context.get('user')

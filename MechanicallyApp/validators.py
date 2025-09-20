@@ -49,4 +49,4 @@ class MaximumLengthValidator:
 
     def validate(self, password, user=None):
         if len(password) > self.max_length:
-           raise DjangoValidationError('Password must be less than 256 characters.', code='password_to_long', params={'max_length': self.max_length})
+           raise DjangoValidationError(f'Password must be less than {self.max_length} characters.', code='password_to_long', params={'max_length': self.max_length})
