@@ -61,3 +61,36 @@ jobs:
     - name: Run Tests
       run: |
         python manage.py test
+
+  sca-scan:
+    name: sca-scan (pip-audit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run sca scan
+        run: |
+          pip install pip-audit
+          pip install -r requirements.txt
+          pip-audit --format json | python -m json.tool > sca-scan.json
+      - name: Retrieve sca-scan report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sca-scan-report
+          path: sca-scan.json
+          retention-days: 7
+
+  sast-scan:
+    name: sast-scan (semgrep)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run sast scan
+        run: |
+          pip install semgrep
+          semgrep --config auto --sarif --sarif-output=sast-scan.sarif
+      - name: Retrieve sast-scan report
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: sast-scan.sarif

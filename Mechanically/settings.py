@@ -85,6 +85,7 @@ DATABASES = {
         'PASSWORD': env('DB_PASSWORD'),
         'HOST': env('DB_HOST'),
         'PORT': env('DB_PORT'),
+        #TODO: odkomentować do opisywania pracy, zakomentowane po to aby ci/cd przechodziło
         #'OPTIONS':{
         #    'ssl':{
         #        'ca': env('CA_CERT'),
