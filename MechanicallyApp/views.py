@@ -163,7 +163,6 @@ class VehicleRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView)
 
 
 #jest to widok służący do aktywacji konta oraz zmiany hasła z domyślnego na wybrane przez usera
-#TODO: przetestować poprawność działania
 class AccountActivationAPIView(APIView):
     http_method_names = ['post']
     permission_classes = [~IsAuthenticated]
@@ -176,8 +175,6 @@ class AccountActivationAPIView(APIView):
         result = serializer.save()
         return Response({'message': result}, status=status.HTTP_200_OK)
 
-
-#TODO: przetestować workflow resetu hasła, w przyszłości dodać throttling aby uniknąć DoS
 #widok służący do wysyłania email w związku z żądaniem resetu hasła
 class ResetPasswordRequestAPIView(APIView):
     http_method_names = ['post']
@@ -335,8 +332,6 @@ class UnassignUserFromLocationAPIView(APIView):
         obj.delete()
         return Response({'message':'User has been unassigned.'},status=status.HTTP_200_OK)
 
-
-#TODO: wytestować wszystkie widoki FailureReport
 #widok ten służy do tworzenia failure reportów przez standardowego użytkownika oraz wypisywania ich przez menadżera i admina
 class FailureReportListCreateAPIView(generics.ListCreateAPIView):
     queryset = FailureReport.objects.all()
@@ -498,7 +493,6 @@ class RepairReportListAPIView(generics.ListAPIView):
             return qs
         return qs.none()
 
-#TODO:dokładnie wytestować poprawność wylistowanych repair reportów
 #widok ten służy do wyświetlenia wszystkich failure + repair przypisanych do warsztatu, w którym pracuje mechanik
 class RepairReportsInWorkshopListAPIView(generics.ListAPIView):
     serializer_class = RepairReportListSerializer
@@ -512,7 +506,6 @@ class RepairReportsInWorkshopListAPIView(generics.ListAPIView):
         else:
             return RepairReport.objects.none()
 
-#TODO:dokładnie wytestować poprawność wylistowanych repair reportów
 #widok ten służy do wypisania wszystkich historycznych failure + repair dla pojazdu o zadanym id. Pojazd ten musi być przypisany do naprawy do danego warsztatu, w którym pracuje mechanik
 class RelatedVehicleRepairReportsListAPIView(APIView):
     http_method_names = ['get','head']
@@ -531,8 +524,6 @@ class RelatedVehicleRepairReportsListAPIView(APIView):
         else:
             raise NotFound("You are not assigned to any location.")
 
-
-#TODO: dokładnie wytestować wybór queryseta
 class RepairReportRetrieveUpdateAPIView(generics.RetrieveUpdateAPIView):
     queryset = RepairReport.objects.all()
     serializer_class = RepairReportRetrieveUpdateSerializer

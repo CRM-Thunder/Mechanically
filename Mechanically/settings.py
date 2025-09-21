@@ -98,7 +98,6 @@ DATABASES = {
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
-#TODO: przetestować poprawność walidacji
 AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
@@ -169,10 +168,13 @@ REST_FRAMEWORK = {
         'account_activation': '10/hour',
     }
 }
-
-#ustawienie tylko do testow
+#TODO:dodać blacklisting tokenów czyli logout
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=360)
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=5),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
+    "ALGORITHM": "RS256",
+    "SIGNING_KEY": env('JWT_SIGNING_KEY'),
+    "VERIFYING_KEY": env('JWT_VERIFYING_KEY'),
 }
 
 EMAIL_BACKEND='django.core.mail.backends.smtp.EmailBackend'

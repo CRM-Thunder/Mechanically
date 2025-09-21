@@ -108,7 +108,6 @@ class UserCreateSerializer(serializers.ModelSerializer):
             generated_password=generate_random_password()
         user=User.objects.create_user(username=generated_username, password=generated_password, is_active=False, **validated_data)
         token = default_token_generator.make_token(user)
-        #TODO: przejść na asynchroniczne wysyłanie maila
         send_activation_email(user, token=token)
         return user
 

@@ -591,6 +591,72 @@ class UserTestCase(TestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('Ensure this field has no more than 256 characters.',str(response.json()))
 
+    def test_user_can_reset_his_password(self):
+        client = APIClient()
+        response = client.post(reverse('user-reset-password'), data={'user': self.standard1.id,
+                                                                 'token': default_token_generator.make_token(
+                                                                     self.standard1), 'password': 'test123456789',
+                                                                 'confirm_password': 'test123456789'})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        user = authenticate(username=self.standard1.username, password='test123456789')
+        self.assertEqual(user, User.objects.get(pk=self.standard1.pk))
+
+    def test_user_cannot_reset_password_without_proper_token(self):
+        client = APIClient()
+        response = client.post(reverse('user-reset-password'), data={'user': self.standard1.id,
+                                                                 'token': default_token_generator.make_token(
+                                                                     self.standard2), 'password': 'test123456789',
+                                                                 'confirm_password': 'test123456789'})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('Invalid user or token.', str(response.json()))
+
+    def test_user_cannot_reset_password_for_too_short_password(self):
+        client = APIClient()
+        response = client.post(reverse('user-reset-password'), data={'user': self.standard1.id,
+                                                                 'token': default_token_generator.make_token(
+                                                                     self.standard1), 'password': 'test123',
+                                                                 'confirm_password': 'test123'})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('This password is too short.', str(response.json()))
+
+    def test_user_cannot_reset_password_for_common_password(self):
+
+        client = APIClient()
+        response = client.post(reverse('user-reset-password'), data={'user': self.standard1.id,
+                                                                 'token': default_token_generator.make_token(
+                                                                     self.standard1), 'password': 'password12345',
+                                                                 'confirm_password': 'password12345'})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('This password is too common.', str(response.json()))
+
+    def test_user_cannot_reset_password_for_numeric_password(self):
+
+        client = APIClient()
+        response = client.post(reverse('user-reset-password'), data={'user': self.standard1.id,
+                                                                 'token': default_token_generator.make_token(
+                                                                     self.standard1), 'password': '123456789123',
+                                                                 'confirm_password': '123456789123'})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('This password is entirely numeric.', str(response.json()))
+
+    def test_user_cannot_reset_password_for_too_long_password(self):
+
+        client = APIClient()
+        response = client.post(reverse('user-reset-password'), data={'user': self.standard1.id,
+                                                                 'token': default_token_generator.make_token(
+                                                                     self.standard1), 'password': '123-rZRn}ZPh(dYi)i7qpQcv&*FD-veL,M{{[DvjPRkrKV}TvQkra)}/-EYbSN#eH_iKCb:V%!+2ACyPj}0FqvWxihr(y(m8+vEmq}r5XTvtU.L8WG.7B/6CMeE=A[{gf7t:f,)pv}}kDrzx!hbXh+zbpaY%.w2Hn!K[&-@{eG}GwzP(Rk16P_.RHZ}7hjU{e]y@$Vv61D_m!bHN5d*#b+%@AAk0Ujr9FR2{{#q3/3PYhQS1d/3$EM:g&75RxZ6!W,',
+                                                                 'confirm_password': '123-rZRn}ZPh(dYi)i7qpQcv&*FD-veL,M{{[DvjPRkrKV}TvQkra)}/-EYbSN#eH_iKCb:V%!+2ACyPj}0FqvWxihr(y(m8+vEmq}r5XTvtU.L8WG.7B/6CMeE=A[{gf7t:f,)pv}}kDrzx!hbXh+zbpaY%.w2Hn!K[&-@{eG}GwzP(Rk16P_.RHZ}7hjU{e]y@$Vv61D_m!bHN5d*#b+%@AAk0Ujr9FR2{{#q3/3PYhQS1d/3$EM:g&75RxZ6!W,'})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('Ensure this field has no more than 256 characters.', str(response.json()))
+
+    def test_user_cannot_activate_his_account_with_different_password_fields(self):
+        client = APIClient()
+        response = client.post(reverse('user-reset-password'), data={'user': self.standard1.id,
+                                                                 'token': default_token_generator.make_token(
+                                                                     self.standard1), 'password': 'Kaliniak123456',
+                                                                 'confirm_password': 'Kaliniak654321'})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('Passwords do not match.', str(response.json()))
 
     def test_user_can_activate_his_account(self):
 
