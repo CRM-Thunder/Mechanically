@@ -55,6 +55,8 @@ jobs:
         echo "EMAIL_HOST_USER=${{secrets.EMAIL_HOST_USER}}" >> .env
         echo "EMAIL_HOST_PASSWORD=${{secrets.EMAIL_HOST_PASSWORD}}" >> .env
         echo "CA_CERT=${{secrets.CA_CERT}}" >> .env
+        echo "JWT_SIGNING_KEY=${{secrets.JWT_SIGNING_KEY}}" >> .env
+        echo "JWT_VERIFYING_KEY=${{secrets.JWT_VERIFYING_KEY}}" >>.env
 
     - name: Migrate to database
       run: |
