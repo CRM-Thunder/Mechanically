@@ -40,7 +40,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'MechanicallyApp.apps.MechanicallyappConfig',
     'django_extensions',
-    'rest_framework'
+    'rest_framework',
+    'rest_framework_simplejwt.token_blacklist'
 ]
 
 MIDDLEWARE = [
@@ -166,9 +167,10 @@ REST_FRAMEWORK = {
         'password_reset_request':'3/hour',
         'password_reset':'10/hour',
         'account_activation': '10/hour',
+        'obtain_token_pair': '5/minute',
     }
 }
-#TODO:dodać blacklisting tokenów czyli logout
+
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=5),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=1),

@@ -1,6 +1,8 @@
 from django.db import transaction
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from rest_framework_simplejwt.views import TokenObtainPairView
 
 from .models import Manufacturer, Location, UserLocationAssignment, Vehicle, User, FailureReport, RepairReport, \
     RepairReportRejection
@@ -27,6 +29,12 @@ from django.db.models import Q
 
 
 #dodawać i edytować Manufacturera może administrator, reszta może wypisywać
+
+class CustomTokenObtainPairView(TokenObtainPairView):
+    serializer_class = TokenObtainPairSerializer
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope='obtain_token_pair'
+    permission_classes = [~IsAuthenticated]
 class ManufacturerListCreateAPIView(generics.ListCreateAPIView):
     queryset = Manufacturer.objects.all()
     serializer_class = ManufacturerSerializer
