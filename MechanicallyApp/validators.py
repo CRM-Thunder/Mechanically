@@ -22,7 +22,7 @@ def phone_number_validator(phone_number):
         raise serializers.ValidationError('Phone number must be in correct format: XXXXXXXXX')
 
 def manufacturer_name_validator(manufacturer_name):
-    if not re.match(r'^[A-Z][a-zA-Z]*(?:[- ]?[A-Z][a-zA-Z]*)*$', manufacturer_name):
+    if not re.match(r'^[A-Z][a-zA-Z]*(?:[ -][A-Z][a-zA-Z]*)*$', manufacturer_name):
         raise serializers.ValidationError('Manufacturer name must consist of capital letters only and only one space between words.')
 
 def location_name_validator(location_name):
