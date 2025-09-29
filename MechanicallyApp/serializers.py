@@ -350,7 +350,7 @@ class VehicleRetrieveSerializer(serializers.ModelSerializer):
 class VehicleListSerializer(serializers.ModelSerializer):
     class Meta:
         model=Vehicle
-        fields=['id','manufacturer','vehicle_model','year','location','availability']
+        fields=['id','manufacturer','vehicle_type','fuel_type','vehicle_model','year','location','availability']
         read_only_fields=['id','manufacturer','vehicle_model','year','location','availability']
 
 #serializer do dodawania i aktualizacji pojazdu

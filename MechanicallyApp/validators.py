@@ -10,7 +10,7 @@ def first_name_validator(first_name):
 
 def last_name_validator(last_name):
     if not re.match(r"^(?:[A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]+|[A-ZĄĆĘŁŃÓŚŹŻ]+)(?:[-' ][A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]+)*$", last_name):
-        raise serializers.ValidationError('Last name must start with capital letter and contain only letters.')
+        raise serializers.ValidationError('Last name must start with capital letter and contain only letters, spaces, apostrophes, hyphens.')
 
 
 def vin_validator(vin):
@@ -23,11 +23,11 @@ def phone_number_validator(phone_number):
 
 def manufacturer_name_validator(manufacturer_name):
     if not re.match(r'^[A-Z][a-zA-Z]*(?:[ -][A-Z][a-zA-Z]*)*$', manufacturer_name):
-        raise serializers.ValidationError('Manufacturer name must consist of capital letters only and only one space between words.')
+        raise serializers.ValidationError('Manufacturer name must start with capital letter and may contain letters, single spaces or hyphens.')
 
 def location_name_validator(location_name):
-    if not re.match(r'^[A-Z]+(?: [A-Z]+)*$', location_name):
-        raise serializers.ValidationError('Location name must consist of capital letters only and only one space between words. ')
+    if not re.match(r"^(?:[A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]+|[A-ZĄĆĘŁŃÓŚŹŻ]+)(?:[-' ][A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]+)*$", location_name):
+        raise serializers.ValidationError('Last name must start with capital letter and contain only letters, spaces, apostrophes, hyphens.')
 
 def vehicle_year_validator(vehicle_year):
     current_year=date.today().year

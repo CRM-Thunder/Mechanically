@@ -41,7 +41,8 @@ INSTALLED_APPS = [
     'MechanicallyApp.apps.MechanicallyappConfig',
     'django_extensions',
     'rest_framework',
-    'rest_framework_simplejwt.token_blacklist'
+    'rest_framework_simplejwt.token_blacklist',
+    'django_filters'
 ]
 
 MIDDLEWARE = [

@@ -26,6 +26,9 @@ from .permissions import IsManager, IsAdmin, \
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import NotFound, ValidationError
 from django.db.models import Q
+from rest_framework import filters
+from django_filters import rest_framework as external_filters
+from .filters import LocationFilter, VehicleFilter, UserFilter
 
 
 #dodawać i edytować Manufacturera może administrator, reszta może wypisywać
@@ -39,6 +42,8 @@ class ManufacturerListCreateAPIView(generics.ListCreateAPIView):
     queryset = Manufacturer.objects.all()
     serializer_class = ManufacturerSerializer
     http_method_names = ['head', 'get', 'post']
+    filter_backends = (filters.SearchFilter,)
+    search_fields = ['name']
     def get_permissions(self):
         if self.request.method.lower() == 'post':
             self.permission_classes = [IsAdmin]
@@ -64,6 +69,8 @@ class ManufacturerRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPI
 class LocationListCreateAPIView(generics.ListCreateAPIView):
     queryset = Location.objects.all()
     http_method_names = ['head', 'get', 'post']
+    filter_backends = (external_filters.DjangoFilterBackend,)
+    filterset_class = LocationFilter
     def get_serializer_class(self):
         if self.request.method.lower()=='post':
             return LocationCreateRetrieveSerializer
@@ -113,7 +120,8 @@ class VehicleListCreateAPIView(generics.ListCreateAPIView):
     queryset = Vehicle.objects.all()
     serializer_class = VehicleListSerializer
     http_method_names = ['head', 'get', 'post']
-
+    filter_backends = (external_filters.DjangoFilterBackend,)
+    filterset_class = VehicleFilter
     def get_serializer_class(self):
         if self.request.method.lower() == 'post':
             return VehicleCreateUpdateSerializer
@@ -229,6 +237,8 @@ class PasswordChangeAPIView(APIView):
 class UserListCreateAPIView(generics.ListCreateAPIView):
     queryset = User.objects.all()
     http_method_names = ['head', 'get', 'post']
+    filter_backends = (external_filters.DjangoFilterBackend,)
+    filterset_class = UserFilter
     def get_permissions(self):
         if self.request.method.lower() in ('get','head'):
             self.permission_classes = [IsAuthenticated]
