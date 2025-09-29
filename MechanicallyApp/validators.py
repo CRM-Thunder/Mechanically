@@ -26,8 +26,8 @@ def manufacturer_name_validator(manufacturer_name):
         raise serializers.ValidationError('Manufacturer name must start with capital letter and may contain letters, single spaces or hyphens.')
 
 def location_name_validator(location_name):
-    if not re.match(r"^(?:[A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]+|[A-ZĄĆĘŁŃÓŚŹŻ]+)(?:[-' ][A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]+)*$", location_name):
-        raise serializers.ValidationError('Last name must start with capital letter and contain only letters, spaces, apostrophes, hyphens.')
+    if not re.match(r'^[A-ZĄĆĘŁŃÓŚŹŻ]+(?:[ -][A-ZĄĆĘŁŃÓŚŹŻ]+)*$', location_name):
+        raise serializers.ValidationError('Location name must consist of capital letters and may contain single spaces or hyphens.')
 
 def vehicle_year_validator(vehicle_year):
     current_year=date.today().year

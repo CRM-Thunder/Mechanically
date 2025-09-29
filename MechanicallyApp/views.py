@@ -28,7 +28,8 @@ from rest_framework.exceptions import NotFound, ValidationError
 from django.db.models import Q
 from rest_framework import filters
 from django_filters import rest_framework as external_filters
-from .filters import LocationFilter, VehicleFilter, UserFilter
+from .filters import LocationFilter, VehicleFilter, UserFilter, FailureReportFilter, RepairReportFilter, \
+    RepairReportRejectionFilter
 
 
 #dodawać i edytować Manufacturera może administrator, reszta może wypisywać
@@ -282,7 +283,7 @@ class UserProfileAPIView(APIView):
         if user is None:
             raise NotFound('There is no user with provided ID.')
         self.check_object_permissions(self.request, user)
-        serializer=UserRetrieveSerializer(user, context={'request': request})
+        serializer=UserRetrieveSerializer(user, context={'request': request, 'user_profile_endpoint':True})
         return Response(serializer.data,status=status.HTTP_200_OK)
 
 class UserRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
@@ -296,6 +297,7 @@ class UserRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
     def get_serializer_context(self):
         context = super().get_serializer_context()
         context['request'] = self.request
+        context['user_profile_endpoint']=False
         return context
 
     def get_permissions(self):
@@ -354,6 +356,8 @@ class UnassignUserFromLocationAPIView(APIView):
 class FailureReportListCreateAPIView(generics.ListCreateAPIView):
     queryset = FailureReport.objects.all()
     http_method_names = ['head', 'get', 'post']
+    filter_backends = (external_filters.DjangoFilterBackend,)
+    filterset_class = FailureReportFilter
     def get_serializer_context(self):
         context = super().get_serializer_context()
         context['request'] = self.request
@@ -502,6 +506,8 @@ class RepairReportListAPIView(generics.ListAPIView):
     serializer_class = RepairReportListSerializer
     http_method_names = ['head', 'get']
     permission_classes = [IsManager | IsAdmin]
+    filter_backends = (external_filters.DjangoFilterBackend,)
+    filterset_class = RepairReportFilter
 
     def get_queryset(self):
         qs=super().get_queryset()
@@ -516,6 +522,8 @@ class RepairReportsInWorkshopListAPIView(generics.ListAPIView):
     serializer_class = RepairReportListSerializer
     permission_classes = [IsMechanicAssignedToWorkshop]
     http_method_names = ['head', 'get']
+    filter_backends = (external_filters.DjangoFilterBackend,)
+    filterset_class = RepairReportFilter
 
     def get_queryset(self):
         mechanic_workshop_id=UserLocationAssignment.objects.filter(user_id=self.request.user.id,location__location_type='W').values_list('location_id',flat=True).first()
@@ -619,6 +627,8 @@ class RepairReportRejectionListAPIView(generics.ListAPIView):
     serializer_class = RepairReportRejectionListSerializer
     permission_classes = [IsManager | IsAdmin |IsMechanicAssignedToWorkshop]
     http_method_names = ['head', 'get']
+    filter_backends = (external_filters.DjangoFilterBackend,)
+    filterset_class = RepairReportRejectionFilter
 
     def get_serializer_context(self):
         context = super().get_serializer_context()

@@ -1,5 +1,5 @@
 from django_filters import rest_framework as filters
-from .models import Location, Vehicle, User
+from .models import Location, Vehicle, User, FailureReport, RepairReport, RepairReportRejection
 
 
 class LocationFilter(filters.FilterSet):
@@ -33,4 +33,31 @@ class UserFilter(filters.FilterSet):
             'last_name': ['icontains'],
             'email': ['icontains'],
             'phone_number': ['exact'],
+        }
+
+class FailureReportFilter(filters.FilterSet):
+    vehicle=filters.UUIDFilter(field_name='vehicle', lookup_expr='exact')
+    managed_by=filters.UUIDFilter(field_name='managed_by', lookup_expr='exact')
+    class Meta:
+        model = FailureReport
+        fields = {
+            'title': ['icontains'],
+            'status': ['exact'],
+        }
+
+class RepairReportFilter(filters.FilterSet):
+    vehicle=filters.UUIDFilter(field_name='failure_report__vehicle_id', lookup_expr='exact')
+    title=filters.CharFilter(field_name='failure_report__title', lookup_expr='icontains')
+    class Meta:
+        model = RepairReport
+        fields = {
+            'status': ['exact'],
+        }
+
+class RepairReportRejectionFilter(filters.FilterSet):
+    repair_report=filters.UUIDFilter(field_name='repair_report', lookup_expr='exact')
+    class Meta:
+        model = RepairReportRejection
+        fields={
+            'title': ['icontains'],
         }

@@ -179,14 +179,18 @@ class UserRetrieveSerializer(serializers.ModelSerializer):
 
     def get_fields(self):
         request=self.context.get('request')
+        is_user_profile_endpoint=self.context.get('user_profile_endpoint',False)
         fields=super().get_fields()
         if self.instance.role in ['standard','mechanic']:
             fields['user_location_assignment']=UserLocationAssignmentForUserSerializer(read_only=True)
-        if not request.user.is_superuser:
+        if request.user.is_superuser==False and is_user_profile_endpoint==False:
             fields.pop('is_superuser')
             fields.pop('is_active')
             fields.pop('username')
             fields.pop('date_joined')
+        elif request.user.is_superuser==False and is_user_profile_endpoint==True:
+            fields.pop('is_superuser')
+            fields.pop('is_active')
         return fields
 
 class AccountActivationSerializer(serializers.Serializer):
@@ -452,8 +456,8 @@ class FailureReportListSerializer(serializers.ModelSerializer):
     vehicle=VehicleRetrieveSerializer(read_only=True)
     class Meta:
         model=FailureReport
-        fields=['id','title','vehicle','status','report_date']
-        read_only_fields=['id','title','vehicle','status','report_date']
+        fields=['id','title','vehicle','status','report_date','managed_by']
+        read_only_fields=['id','title','vehicle','status','report_date','managed_by']
 
 class FailureReportInfoForRepairReportSerializer(serializers.ModelSerializer):
     vehicle=VehicleRetrieveSerializer(read_only=True)
@@ -525,12 +529,12 @@ class RepairReportRetrieveUpdateSerializer(serializers.ModelSerializer):
 
 class RepairReportListSerializer(serializers.ModelSerializer):
     title=serializers.CharField(source='failure_report.title',read_only=True)
-    vehicle_id=serializers.UUIDField(source='failure_report.vehicle_id',read_only=True)
+    vehicle=serializers.UUIDField(source='failure_report.vehicle_id',read_only=True)
     report_date=serializers.DateTimeField(source='failure_report.report_date',read_only=True)
     class Meta:
         model=RepairReport
-        fields=['id','status','title','vehicle_id','report_date']
-        read_only_fields=['id','status','title','vehicle_id','report_date']
+        fields=['id','title','status','vehicle','report_date']
+        read_only_fields=['id','title','status','vehicle','report_date']
 
 class RepairReportRejectionListSerializer(serializers.ModelSerializer):
     class Meta:
@@ -538,13 +542,6 @@ class RepairReportRejectionListSerializer(serializers.ModelSerializer):
         fields=['id','repair_report','title','rejection_date']
         read_only_fields=['id','repair_report','title','rejection_date']
 
-    def to_representation(self,instance):
-        request=self.context.get('request')
-
-        rep=super().to_representation(instance)
-        if request.user.role=='mechanic':
-            rep.pop('repair_report')
-        return rep
 
 class RepairReportRejectionRetrieveSerializer(serializers.ModelSerializer):
     class Meta:
@@ -552,12 +549,6 @@ class RepairReportRejectionRetrieveSerializer(serializers.ModelSerializer):
         fields=['id','repair_report','title','rejection_date','reason']
         read_only_fields=['id','repair_report','title','rejection_date','reason']
 
-    def to_representation(self, instance):
-        request=self.context.get('request')
-        rep = super().to_representation(instance)
-        if request.user.role == 'mechanic':
-            rep.pop('repair_report')
-        return rep
 
 class RepairReportRejectionSerializer(serializers.ModelSerializer):
     class Meta:

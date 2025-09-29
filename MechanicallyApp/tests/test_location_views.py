@@ -95,7 +95,8 @@ class LocationTestCase(TestCase):
         response = client.post(reverse('location-list'),
                                {'name': 'SIEDZIBA C', 'phone_number': 321432542, 'email': 'test3@gmail.com',
                                 'address': 'Piaskowa 3 Sopot', 'location_type': 'B'})
-        assert response.status_code == status.HTTP_201_CREATED
+        print(response.json())
+        self.assertEqual(response.status_code,status.HTTP_201_CREATED)
 
 
     def test_admin_user_can_update_location(self):

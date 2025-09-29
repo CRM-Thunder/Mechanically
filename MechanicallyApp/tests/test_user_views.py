@@ -156,7 +156,7 @@ class UserTestCase(TestCase):
         client.force_authenticate(user)
         response = client.post(reverse('user-list'), data={
             "first_name": "Jakub",
-            "last_name": "Tackowski",
+            "last_name": "Tackowski-Ratajski",
             "email": "delivered@resend.dev",
             "phone_number": "628327263",
             "role": "standard"
@@ -172,7 +172,7 @@ class UserTestCase(TestCase):
         client.force_authenticate(user)
         response = client.post(reverse('user-list'), data={
             "first_name": "Jakub",
-            "last_name": "Tackowski",
+            "last_name": "O'Hara",
             "email": "delivered@resend.dev",
             "phone_number": "628327263",
             "role": "mechanic"
