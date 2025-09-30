@@ -173,12 +173,17 @@ REST_FRAMEWORK = {
 }
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=5),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
+    "REFRESH_TOKEN_LIFETIME": timedelta(hours=12),
     "ALGORITHM": "RS256",
     "SIGNING_KEY": env('JWT_SIGNING_KEY'),
     "VERIFYING_KEY": env('JWT_VERIFYING_KEY'),
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
+    "TOKEN_REFRESH_SERIALIZER": "MechanicallyApp.serializers.CustomTokenRefreshSerializer",
 }
+
+
 
 EMAIL_BACKEND='django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST=env('EMAIL_HOST')
