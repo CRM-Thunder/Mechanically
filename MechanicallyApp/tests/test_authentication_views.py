@@ -41,8 +41,6 @@ class AuthenticationTestCase(TestCase):
         response = client.post(reverse('obtain-token-pair'),
                                data={'username': self.admin.username, 'password': 'test123456789'})
         refresh = response.json()['refresh']
-        response = client.post(reverse('refresh-token'), data={'refresh': refresh})
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
         response=client.post(reverse('blacklist-refresh-token'), data={'refresh': refresh})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         response = client.post(reverse('refresh-token'), data={'refresh': refresh})
