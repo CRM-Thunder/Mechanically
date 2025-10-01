@@ -36,6 +36,18 @@ class AuthenticationTestCase(TestCase):
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
         self.assertIn('No active account found with the given credentials',str(response.json()))
 
+    def test_inactive_user_cannot_refresh_token(self):
+        client = APIClient()
+        response = client.post(reverse('obtain-token-pair'),
+                               data={'username': self.admin.username, 'password': 'test123456789'})
+        refresh = response.json()['refresh']
+        self.admin.is_active=False
+        self.admin.save()
+        response = client.post(reverse('refresh-token'),data={'refresh':refresh})
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertIn('No active account found for the given token.',str(response.json()))
+
+
     def test_user_can_blacklist_refresh_token(self):
         client = APIClient()
         response = client.post(reverse('obtain-token-pair'),
