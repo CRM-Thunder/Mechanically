@@ -12,7 +12,7 @@ class RepairReportTestCase(TestCase):
         self.superuser = User.objects.create_superuser(
             first_name="Grzegorz", last_name="Kowalski",
             username="grzkow1111", email="testowy76@gmail.com",
-            password="test1234", role="admin", phone_number="111111111")
+            password="test1234", role="admin", phone_number="111111111", is_new_account=False)
 
         self.admin = User.objects.create_user(
             first_name="Piotr",
@@ -21,7 +21,7 @@ class RepairReportTestCase(TestCase):
             email="testowy@gmail.com",
             password="test1234",
             role="admin",
-            phone_number="987654321"
+            phone_number="987654321", is_new_account=False
         )
 
         self.standard = User.objects.create_user(
@@ -31,7 +31,7 @@ class RepairReportTestCase(TestCase):
             email="testowy2@gmail.com",
             password="test1234",
             role="standard",
-            phone_number="987654322"
+            phone_number="987654322", is_new_account=False
         )
 
         self.manager = User.objects.create_user(
@@ -41,7 +41,7 @@ class RepairReportTestCase(TestCase):
             email="testowy3@gmail.com",
             password="test1234",
             role="manager",
-            phone_number="987654323"
+            phone_number="987654323", is_new_account=False
         )
         self.manager2 = User.objects.create_user(
             first_name="Remek",
@@ -50,7 +50,7 @@ class RepairReportTestCase(TestCase):
             email="testowy35512@gmail.com",
             password="test1234",
             role="manager",
-            phone_number="313754323"
+            phone_number="313754323", is_new_account=False
         )
         self.mechanic = User.objects.create_user(
             first_name="Dawid",
@@ -59,7 +59,7 @@ class RepairReportTestCase(TestCase):
             email="testowy4@gmail.com",
             password="test1234",
             role="mechanic",
-            phone_number="987654324"
+            phone_number="987654324", is_new_account=False
         )
         self.mechanic2 = User.objects.create_user(
             first_name="Jakub",
@@ -68,7 +68,7 @@ class RepairReportTestCase(TestCase):
             email="testowy12524@gmail.com",
             password="test1234",
             role="mechanic",
-            phone_number="441144114"
+            phone_number="441144114", is_new_account=False
         )
 
         self.mechanic3 = User.objects.create_user(
@@ -78,7 +78,7 @@ class RepairReportTestCase(TestCase):
             email="testowy12522324@gmail.com",
             password="test1234",
             role="mechanic",
-            phone_number="452114114"
+            phone_number="452114114", is_new_account=False
         )
 
         self.man = Manufacturer.objects.create(name='MAN')

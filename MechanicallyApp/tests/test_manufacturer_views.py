@@ -6,8 +6,8 @@ from rest_framework.test import APIClient
 
 class ManufacturerTestCase(TestCase):
     def setUp(self):
-        User.objects.create_user(first_name="Piotr", last_name="Testowy", username="piotes1111", email="testowy@gmail.com", password="test1234", role="admin", phone_number="987654321")
-        User.objects.create_user(first_name="Jan", last_name="Nowak", username="jannow1111", email="testowy2@gmail.com", password="test1234", role="standard", phone_number="987654322")
+        User.objects.create_user(first_name="Piotr", last_name="Testowy", username="piotes1111", email="testowy@gmail.com", password="test1234", role="admin", phone_number="987654321", is_new_account=False)
+        User.objects.create_user(first_name="Jan", last_name="Nowak", username="jannow1111", email="testowy2@gmail.com", password="test1234", role="standard", phone_number="987654322", is_new_account=False)
         Manufacturer.objects.create(name='DODGE')
         Manufacturer.objects.create(name='JAGUAR')
         Manufacturer.objects.create(name='HYUNDAI')

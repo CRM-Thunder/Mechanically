@@ -13,6 +13,7 @@ class User(AbstractUser):
     id=models.UUIDField(primary_key=True,default=uuid.uuid4,editable=False)
     is_staff = models.BooleanField(default=False)
     is_superuser = models.BooleanField(default=False)
+    is_new_account=models.BooleanField(default=True)
     username = models.CharField(max_length=10, unique=True,
     validators=[
         MinLengthValidator(10)

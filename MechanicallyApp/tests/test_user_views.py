@@ -9,16 +9,16 @@ from django.core import mail
 
 class UserTestCase(TestCase):
     def setUp(self):
-        self.superuser=User.objects.create_superuser(first_name="Grzegorz", last_name="Kowalski", username="grzkow1111", email="testowy4@gmail.com", password="test1234", role="admin", phone_number="111111111")
-        self.admin1=User.objects.create_user(first_name="Piotr", last_name="Testowy", username="piotes1111", email="testowy@gmail.com", password="test1234", role="admin", phone_number="222222222")
-        self.admin2=User.objects.create_user(first_name="Albrecht", last_name="Entrati", username="albent1111",email="testowy75@gmail.com", password="test1234", role="admin", phone_number="121212121")
-        self.standard1=User.objects.create_user(first_name="Jan", last_name="Nowak", username="jannow1111", email="testowy2@gmail.com", password="test123456789", role="standard", phone_number="333333333")
-        self.standard2=User.objects.create_user(first_name="Krzysztof", last_name="Pawlak", username="krzpaw1111", email="testowy22@gmail.com",password="test1234", role="standard", phone_number="444444444")
-        self.standard3=User.objects.create_user(first_name="Kamil", last_name="Grosicki", username="kamgro1111", email="testowy23@gmail.com",password="test1234", role="standard", phone_number="555555555")
-        self.manager=User.objects.create_user(first_name="Szymon", last_name="Chasowski", username="szycha1111", email="testowy3@gmail.com",password="test1234", role="manager", phone_number="666666666")
-        self.mechanic1=User.objects.create_user(first_name="Karol", last_name="Nawrak", username="karnaw1111", email="testowy26@gmail.com",password="test1234", role="mechanic", phone_number="777777777")
-        self.mechanic2=User.objects.create_user(first_name="Jimmy", last_name="Mcgill", username="jimmcg1111",email="testowy27@gmail.com", password="test1234", role="mechanic", phone_number="888888888")
-        self.mechanic3=User.objects.create_user(first_name="Lalo", last_name="Salamanca", username="lalsal1111",email="testowy28@gmail.com", password="test1234", role="mechanic",phone_number="999999999")
+        self.superuser=User.objects.create_superuser(first_name="Grzegorz", last_name="Kowalski", username="grzkow1111", email="testowy4@gmail.com", password="test1234", role="admin", phone_number="111111111", is_new_account=False)
+        self.admin1=User.objects.create_user(first_name="Piotr", last_name="Testowy", username="piotes1111", email="testowy@gmail.com", password="test1234", role="admin", phone_number="222222222", is_new_account=False)
+        self.admin2=User.objects.create_user(first_name="Albrecht", last_name="Entrati", username="albent1111",email="testowy75@gmail.com", password="test1234", role="admin", phone_number="121212121", is_new_account=False)
+        self.standard1=User.objects.create_user(first_name="Jan", last_name="Nowak", username="jannow1111", email="testowy2@gmail.com", password="test123456789", role="standard", phone_number="333333333", is_new_account=False)
+        self.standard2=User.objects.create_user(first_name="Krzysztof", last_name="Pawlak", username="krzpaw1111", email="testowy22@gmail.com",password="test1234", role="standard", phone_number="444444444", is_new_account=False)
+        self.standard3=User.objects.create_user(first_name="Kamil", last_name="Grosicki", username="kamgro1111", email="testowy23@gmail.com",password="test1234", role="standard", phone_number="555555555", is_new_account=False)
+        self.manager=User.objects.create_user(first_name="Szymon", last_name="Chasowski", username="szycha1111", email="testowy3@gmail.com",password="test1234", role="manager", phone_number="666666666", is_new_account=False)
+        self.mechanic1=User.objects.create_user(first_name="Karol", last_name="Nawrak", username="karnaw1111", email="testowy26@gmail.com",password="test1234", role="mechanic", phone_number="777777777", is_new_account=False)
+        self.mechanic2=User.objects.create_user(first_name="Jimmy", last_name="Mcgill", username="jimmcg1111",email="testowy27@gmail.com", password="test1234", role="mechanic", phone_number="888888888", is_new_account=False)
+        self.mechanic3=User.objects.create_user(first_name="Lalo", last_name="Salamanca", username="lalsal1111",email="testowy28@gmail.com", password="test1234", role="mechanic",phone_number="999999999", is_new_account=False)
         self.branch=Location.objects.create(name='SIEDZIBA',phone_number='123456789',email="test@gmail.com",address="Testowa 1 Gdynia", location_type='B')
         self.workshop=Location.objects.create(name='WARSZTAT', phone_number='133456789', email="test2@gmail.com",address="Testowa 2 Gdynia", location_type='W')
         UserLocationAssignment.objects.create(user=self.standard1, location=self.branch)
@@ -649,7 +649,7 @@ class UserTestCase(TestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('Ensure this field has no more than 256 characters.', str(response.json()))
 
-    def test_user_cannot_activate_his_account_with_different_password_fields(self):
+    def test_user_cannot_reset_password_with_different_password_fields(self):
         client = APIClient()
         response = client.post(reverse('user-reset-password'), data={'user': self.standard1.id,
                                                                  'token': default_token_generator.make_token(
@@ -721,3 +721,45 @@ class UserTestCase(TestCase):
                                                                  'confirm_password': 'Kaliniak654321'})
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('Passwords do not match.', str(response.json()))
+
+
+    def test_admin_can_set_inactive_account(self):
+        client = APIClient()
+        client.force_authenticate(self.admin1)
+        response=client.post(reverse('user-set-inactive',kwargs={'pk':str(self.standard1.pk)}))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('User has been deactivated',str(response.json()))
+        self.assertEqual(User.objects.get(pk=self.standard1.pk).is_active, False)
+
+    def test_admin_can_set_active_account(self):
+        self.standard1.is_active=False
+        self.standard1.save()
+        client = APIClient()
+        client.force_authenticate(self.admin1)
+        response = client.post(reverse('user-set-active',kwargs={'pk':str(self.standard1.pk)}))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('User has been activated',str(response.json()))
+        self.assertEqual(User.objects.get(pk=self.standard1.pk).is_active, True)
+
+    def test_admin_cannot_set_active_fresh_account(self):
+        client = APIClient()
+        client.force_authenticate(self.admin1)
+        response=client.post(reverse('user-set-active',kwargs={'pk':str(self.fresh_account.pk)}))
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('This account is yet to be activated by account owner',str(response.json()))
+
+    def test_admin_cannot_set_inactive_inactive_account(self):
+        self.standard1.is_active = False
+        self.standard1.save()
+        client = APIClient()
+        client.force_authenticate(self.admin1)
+        response=client.post(reverse('user-set-inactive',kwargs={'pk':str(self.standard1.pk)}))
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('User is not active.',str(response.json()))
+
+    def test_admin_cannot_set_inactive_other_admin(self):
+        client = APIClient()
+        client.force_authenticate(self.admin1)
+        response=client.post(reverse('user-set-inactive',kwargs={'pk':str(self.admin2.pk)}))
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertIn('You do not have permission to perform this action.',str(response.json()))

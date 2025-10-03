@@ -323,6 +323,44 @@ class UserRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
             return qs
         return qs.none()
 
+class UserSetInactiveAPIView(APIView):
+    http_method_names = ['post']
+    permission_classes = [IsAdminOrSuperuserAndTargetUserHasLowerRole]
+    def post(self,request,pk):
+        if self.request.user.is_superuser:
+            user=User.objects.filter(pk=pk).first()
+        else:
+            user=User.objects.filter(pk=pk).exclude(is_superuser=True).first()
+        if user is None:
+            raise NotFound('There is no user with provided ID.')
+        self.check_object_permissions(self.request, user)
+        if not user.is_active:
+            raise ValidationError('User is not active.')
+        user.is_active = False
+        user.save()
+        return Response({'message': 'User has been deactivated.'}, status=status.HTTP_200_OK)
+
+class UserSetActiveAPIView(APIView):
+    http_method_names = ['post']
+    permission_classes = [IsAdminOrSuperuserAndTargetUserHasLowerRole]
+    def post(self,request,pk):
+        if self.request.user.is_superuser:
+            user=User.objects.filter(pk=pk).first()
+        else:
+            user=User.objects.filter(pk=pk).exclude(is_superuser=True).first()
+        if user is None:
+            raise NotFound('There is no user with provided ID.')
+        self.check_object_permissions(self.request, user)
+        if user.is_active:
+            raise ValidationError('User is already active.')
+        if user.is_new_account:
+            raise ValidationError('This account is yet to be activated by account owner.')
+        user.is_active = True
+        user.save()
+        return Response({'message': 'User has been activated.'}, status=status.HTTP_200_OK)
+
+
+
 class AssignUserToLocationAPIView(APIView):
     http_method_names = ['post']
     permission_classes = [IsManager | IsAdmin]

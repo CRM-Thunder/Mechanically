@@ -7,12 +7,12 @@ class AuthenticationTestCase(TestCase):
     def setUp(self):
         self.admin = User.objects.create_user(first_name="Piotr", last_name="Testowy", username="piotes1111",
                                                email="testowy@gmail.com", password="test123456789", role="admin",
-                                               phone_number="222222222")
+                                               phone_number="222222222", is_new_account=False)
 
         self.fresh_account = User.objects.create_user(first_name="Sebastian", last_name="Wrobel", username="sebwro",
                                                       email="durango@gmail.com",
                                                       password="test123456789",
-                                                      role="standard", phone_number="313731377", is_active=False)
+                                                      role="standard", phone_number="313731377", is_active=False, is_new_account=False)
 
     def test_user_can_obtain_tokens(self):
         client = APIClient()
@@ -43,6 +43,16 @@ class AuthenticationTestCase(TestCase):
         refresh = response.json()['refresh']
         self.admin.is_active=False
         self.admin.save()
+        response = client.post(reverse('refresh-token'),data={'refresh':refresh})
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertIn('No active account found for the given token.',str(response.json()))
+
+    def test_deleted_user_cannot_refresh_token(self):
+        client = APIClient()
+        response = client.post(reverse('obtain-token-pair'),
+                               data={'username': self.admin.username, 'password': 'test123456789'})
+        refresh = response.json()['refresh']
+        self.admin.delete()
         response = client.post(reverse('refresh-token'),data={'refresh':refresh})
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
         self.assertIn('No active account found for the given token.',str(response.json()))

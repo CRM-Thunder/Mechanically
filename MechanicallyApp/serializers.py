@@ -20,16 +20,22 @@ class CustomTokenRefreshSerializer(TokenRefreshSerializer):
         refresh = self.token_class(attrs["refresh"])
 
         user_id = refresh.payload.get(api_settings.USER_ID_CLAIM, None)
-        if user_id and (
-                user := get_user_model().objects.get(
-                    **{api_settings.USER_ID_FIELD: user_id}
-                )
-        ):
-            if not api_settings.USER_AUTHENTICATION_RULE(user):
-                raise AuthenticationFailed(
-                    self.error_messages["no_active_account"],
-                    "no_active_account",
-                )
+        try:
+            if user_id and (
+                    user := get_user_model().objects.get(
+                        **{api_settings.USER_ID_FIELD: user_id}
+                    )
+            ):
+                if not api_settings.USER_AUTHENTICATION_RULE(user):
+                    raise AuthenticationFailed(
+                        self.error_messages["no_active_account"],
+                        "no_active_account",
+                    )
+        except get_user_model().DoesNotExist:
+            raise AuthenticationFailed(
+                self.error_messages["no_active_account"],
+                "no_active_account",
+            )
 
         data = {"access": str(refresh.access_token)}
 
@@ -147,7 +153,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
         generated_password=generate_random_password()
         while validate_password(generated_password) is not None:
             generated_password=generate_random_password()
-        user=User.objects.create_user(username=generated_username, password=generated_password, is_active=False, **validated_data)
+        user=User.objects.create_user(username=generated_username, password=generated_password, is_active=False, is_new_account=True, **validated_data)
         token = default_token_generator.make_token(user)
         send_activation_email(user, token=token)
         return user
@@ -245,7 +251,7 @@ class AccountActivationSerializer(serializers.Serializer):
         token = data.get('token')
         password = data.get('password')
         confirm_password = data.get('confirm_password')
-        user=User.objects.filter(pk=user_id, is_active=False).first()
+        user=User.objects.filter(pk=user_id, is_active=False, is_new_account=True).first()
         if user is None or not default_token_generator.check_token(user, token):
             raise serializers.ValidationError('Invalid user or token.')
 
@@ -264,6 +270,7 @@ class AccountActivationSerializer(serializers.Serializer):
         user=self._user_instance
         user.set_password(self.validated_data.get('password'))
         user.is_active=True
+        user.is_new_account=False
         user.save()
         return "Account has been activated."
 
@@ -325,7 +332,6 @@ class PasswordChangeSerializer(serializers.Serializer):
         user=authenticate(username=user.username, password=old_password)
         if user is None:
             raise serializers.ValidationError('Invalid password.')
-
         try:
             validate_password(new_password, user)
         except DjangoValidationError as err:

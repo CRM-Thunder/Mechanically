@@ -6,16 +6,16 @@ from rest_framework.test import APIClient
 
 class UserLocationAssignmentTestCase(TestCase):
     def setUp(self):
-        self.superuser=User.objects.create_superuser(first_name="Grzegorz", last_name="Kowalski", username="grzkow1111", email="testowy4@gmail.com", password="test1234", role="admin", phone_number="111111111")
+        self.superuser=User.objects.create_superuser(first_name="Grzegorz", last_name="Kowalski", username="grzkow1111", email="testowy4@gmail.com", password="test1234", role="admin", phone_number="111111111", is_new_account=False)
         self.admin=User.objects.create_user(first_name="Piotr", last_name="Testowy", username="piotes1111",
-                                 email="testowy@gmail.com", password="test1234", role="admin", phone_number="222222222")
-        self.standard1=User.objects.create_user(first_name="Jan", last_name="Nowak", username="jannow1111", email="testowy2@gmail.com", password="test1234", role="standard", phone_number="333333333")
+                                 email="testowy@gmail.com", password="test1234", role="admin", phone_number="222222222", is_new_account=False)
+        self.standard1=User.objects.create_user(first_name="Jan", last_name="Nowak", username="jannow1111", email="testowy2@gmail.com", password="test1234", role="standard", phone_number="333333333", is_new_account=False)
         self.standard2 = User.objects.create_user(first_name="Krzysztof", last_name="Pawlak", username="krzpaw1111",
                                              email="testowy22@gmail.com", password="test1234", role="standard",
-                                             phone_number="444444444")
-        self.manager=User.objects.create_user(first_name="Szymon", last_name="Chasowski", username="szycha1111", email="testowy3@gmail.com",password="test1234", role="manager", phone_number="666666666")
-        self.mechanic1=User.objects.create_user(first_name="Karol", last_name="Nawrak", username="karnaw1111", email="testowy26@gmail.com",password="test1234", role="mechanic", phone_number="777777777")
-        self.mechanic2=User.objects.create_user(first_name="Jimmy", last_name="Mcgill", username="jimmcg1111",email="testowy27@gmail.com", password="test1234", role="mechanic", phone_number="888888888")
+                                             phone_number="444444444", is_new_account=False)
+        self.manager=User.objects.create_user(first_name="Szymon", last_name="Chasowski", username="szycha1111", email="testowy3@gmail.com",password="test1234", role="manager", phone_number="666666666", is_new_account=False)
+        self.mechanic1=User.objects.create_user(first_name="Karol", last_name="Nawrak", username="karnaw1111", email="testowy26@gmail.com",password="test1234", role="mechanic", phone_number="777777777", is_new_account=False)
+        self.mechanic2=User.objects.create_user(first_name="Jimmy", last_name="Mcgill", username="jimmcg1111",email="testowy27@gmail.com", password="test1234", role="mechanic", phone_number="888888888", is_new_account=False)
         self.branch1=Location.objects.create(name='SIEDZIBA A',phone_number='123456789',email="test@gmail.com",address="Testowa 1 Gdynia", location_type='B')
         self.workshop1=Location.objects.create(name='WARSZTAT A', phone_number='133456789', email="test2@gmail.com",address="Testowa 2 Gdynia", location_type='W')
         self.branch2 = Location.objects.create(name='SIEDZIBA B', phone_number='123456489', email="test3@gmail.com",

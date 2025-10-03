@@ -7,14 +7,14 @@ from rest_framework.test import APIClient
 
 class VehicleTestCase(TestCase):
     def setUp(self):
-        self.admin=User.objects.create_user(first_name="Piotr", last_name="Testowy", username="piotes1111", email="testowy@gmail.com", password="test1234", role="admin", phone_number="987654321")
-        self.standard=User.objects.create_user(first_name="Jan", last_name="Nowak", username="jannow1111", email="testowy2@gmail.com", password="test1234", role="standard", phone_number="987654322")
+        self.admin=User.objects.create_user(first_name="Piotr", last_name="Testowy", username="piotes1111", email="testowy@gmail.com", password="test1234", role="admin", phone_number="987654321", is_new_account=False)
+        self.standard=User.objects.create_user(first_name="Jan", last_name="Nowak", username="jannow1111", email="testowy2@gmail.com", password="test1234", role="standard", phone_number="987654322", is_new_account=False)
         self.mechanic = User.objects.create_user(first_name="Test", last_name="Testow", username="testes1111",
                                                  email="testowy2131232@gmail.com", password="test1234", role="mechanic",
-                                                 phone_number="917614312")
+                                                 phone_number="917614312", is_new_account=False)
         self.manager=User.objects.create_user(first_name="Szymon", last_name="Chasowski", username="szycha1111",
                                  email="testowy3@gmail.com", password="test1234", role="manager",
-                                 phone_number="987654323")
+                                 phone_number="987654323", is_new_account=False)
         self.dodge=Manufacturer.objects.create(name='DODGE')
         self.man=Manufacturer.objects.create(name='MAN')
         self.branch=Location.objects.create(name='SIEDZIBA', phone_number='123456789', email="test@gmail.com",

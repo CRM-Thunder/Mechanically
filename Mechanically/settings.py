@@ -168,7 +168,7 @@ REST_FRAMEWORK = {
         'password_reset_request':'3/hour',
         'password_reset':'10/hour',
         'account_activation': '10/hour',
-        'obtain_token_pair': '5/minute',
+        'obtain_token_pair': '8/minute',
     }
 }
 

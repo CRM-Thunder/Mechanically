@@ -6,9 +6,9 @@ from rest_framework.test import APIClient
 
 class LocationTestCase(TestCase):
     def setUp(self):
-        self.admin=User.objects.create_user(first_name="Piotr", last_name="Testowy", username="piotes1111", email="testowy@gmail.com", password="test1234", role="admin", phone_number="987654321")
-        self.standard=User.objects.create_user(first_name="Jan", last_name="Nowak", username="jannow1111", email="testowy2@gmail.com", password="test1234", role="standard", phone_number="987654322")
-        self.manager=User.objects.create_user(first_name="Szymon", last_name="Chasowski", username="szycha1111", email="testowy3@gmail.com",password="test1234", role="manager", phone_number="987654323")
+        self.admin=User.objects.create_user(first_name="Piotr", last_name="Testowy", username="piotes1111", email="testowy@gmail.com", password="test1234", role="admin", phone_number="987654321", is_new_account=False)
+        self.standard=User.objects.create_user(first_name="Jan", last_name="Nowak", username="jannow1111", email="testowy2@gmail.com", password="test1234", role="standard", phone_number="987654322", is_new_account=False)
+        self.manager=User.objects.create_user(first_name="Szymon", last_name="Chasowski", username="szycha1111", email="testowy3@gmail.com",password="test1234", role="manager", phone_number="987654323", is_new_account=False)
         self.branch=Location.objects.create(name='SIEDZIBA',phone_number='123456789',email="test@gmail.com",address="Testowa 1 Gdynia", location_type='B')
         self.workshop=Location.objects.create(name='WARSZTAT', phone_number='133456789', email="test2@gmail.com",address="Testowa 2 Gdynia", location_type='W')
 
