@@ -457,17 +457,7 @@ class VehicleCreateUpdateSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         if FailureReport.objects.filter(vehicle_id=instance.id,status__in=['P','A','S']).exists() and validated_data.get('availability')=='A':
             raise serializers.ValidationError('Vehicle has been reported as failure. It cannot be set as available.')
-        instance.vin=validated_data.get('vin', instance.vin)
-        instance.kilometers=validated_data.get('kilometers', instance.kilometers)
-        instance.manufacturer=validated_data.get('manufacturer', instance.manufacturer)
-        instance.vehicle_model=validated_data.get('vehicle_model', instance.vehicle_model)
-        instance.year=validated_data.get('year', instance.year)
-        instance.vehicle_type=validated_data.get('vehicle_type', instance.vehicle_type)
-        instance.fuel_type=validated_data.get('fuel_type', instance.fuel_type)
-        instance.location=validated_data.get('location', instance.location)
-        instance.availability=validated_data.get('availability', instance.availability)
-        instance.save()
-        return instance
+        return super().update(instance, validated_data)
 
 class FailureReportCreateSerializer(serializers.ModelSerializer):
     vehicle=serializers.UUIDField(required=True)
