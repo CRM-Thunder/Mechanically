@@ -441,7 +441,7 @@ class FailureReportAssignPIView(APIView):
         serializer.is_valid(raise_exception=True)
         result = serializer.save()
         return Response(result, status=status.HTTP_200_OK)
-
+#test
 #to widok służący do zamykania sprawy FailureReport poprzez ustawienie statusu DISMISSED
 class FailureReportDismissedAPIView(APIView):
     http_method_names = ['post']
