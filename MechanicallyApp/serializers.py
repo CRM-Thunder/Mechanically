@@ -4,59 +4,12 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
 from rest_framework import serializers
-from rest_framework.exceptions import PermissionDenied, NotFound, AuthenticationFailed
+from rest_framework.exceptions import PermissionDenied, NotFound
 
 from .models import Manufacturer, User, Location, UserLocationAssignment, Vehicle, FailureReport, RepairReport, RepairReportRejection
 from .validators import manufacturer_name_validator, first_name_validator, last_name_validator, phone_number_validator, location_name_validator, vin_validator, vehicle_model_validator, vehicle_year_validator, natural_text_validator
 from .generators import generate_username, generate_random_password
 from .mail_services import send_activation_email, send_reset_password_email
-from rest_framework_simplejwt.serializers import TokenRefreshSerializer
-from typing import Any
-from rest_framework_simplejwt.settings import api_settings
-from django.contrib.auth import get_user_model
-#modyfikacja TokenRefreshSerializer z rest_framework_simplejwt celem zachowania expiry date oryginalnego refresh tokena dla kolejnych refresh tokenów uzyskanych z rotacji
-class CustomTokenRefreshSerializer(TokenRefreshSerializer):
-    def validate(self, attrs: dict[str, Any]) -> dict[str, str]:
-        refresh = self.token_class(attrs["refresh"])
-
-        user_id = refresh.payload.get(api_settings.USER_ID_CLAIM, None)
-        try:
-            if user_id and (
-                    user := get_user_model().objects.get(
-                        **{api_settings.USER_ID_FIELD: user_id}
-                    )
-            ):
-                if not api_settings.USER_AUTHENTICATION_RULE(user):
-                    raise AuthenticationFailed(
-                        self.error_messages["no_active_account"],
-                        "no_active_account",
-                    )
-        except get_user_model().DoesNotExist:
-            raise AuthenticationFailed(
-                self.error_messages["no_active_account"],
-                "no_active_account",
-            )
-
-        data = {"access": str(refresh.access_token)}
-
-        if api_settings.ROTATE_REFRESH_TOKENS:
-            if api_settings.BLACKLIST_AFTER_ROTATION:
-                try:
-                    # Attempt to blacklist the given refresh token
-                    refresh.blacklist()
-                except AttributeError:
-                    # If blacklist app not installed, `blacklist` method will
-                    # not be present
-                    pass
-            #usunięte refresh.set_exp(), aby nowy refresh nie miał wydłużonego expiry date
-            refresh.set_jti()
-            refresh.set_iat()
-            refresh.outstand()
-
-            data["refresh"] = str(refresh)
-
-        return data
-
 
 # serializer służący do wypisywania, dodawania oraz aktualizowania Location
 class LocationCreateRetrieveSerializer(serializers.ModelSerializer):
@@ -551,7 +504,7 @@ class RepairReportRetrieveUpdateSerializer(serializers.ModelSerializer):
     failure_report=FailureReportInfoForRepairReportSerializer(read_only=True)
     class Meta:
         model=RepairReport
-        fields='__all__'
+        fields=['id','failure_report','condition_analysis','repair_action','cost','last_change_date','status']
         read_only_fields=['id','failure_report','last_change_date','status']
 
     def validate_cost(self,value):

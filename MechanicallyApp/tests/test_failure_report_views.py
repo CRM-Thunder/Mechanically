@@ -442,8 +442,9 @@ class FailureReportTestCase(TestCase):
     def test_manager_can_assign_failure_report(self):
         client = APIClient()
         client.force_authenticate(self.manager)
-        response = client.post(reverse('failure-report-assign',kwargs={'pk':self.failure_report1.pk}), data={
-            "workshop": self.workshop.pk
+        response = client.post(reverse('failure-report-action',kwargs={'pk':self.failure_report1.pk}), data={
+            "workshop": self.workshop.pk,
+            "action":"assign"
         })
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -456,8 +457,9 @@ class FailureReportTestCase(TestCase):
     def test_manager_cannot_assign_failure_report_not_managed_by_himself(self):
         client = APIClient()
         client.force_authenticate(self.manager2)
-        response = client.post(reverse('failure-report-assign', kwargs={'pk': self.failure_report1.pk}), data={
-            "workshop": self.workshop.pk
+        response = client.post(reverse('failure-report-action', kwargs={'pk': self.failure_report1.pk}), data={
+            "workshop": self.workshop.pk,
+            "action":"assign"
         })
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
@@ -465,8 +467,9 @@ class FailureReportTestCase(TestCase):
         client = APIClient()
         client.force_authenticate(self.standard)
 
-        response = client.post(reverse('failure-report-assign', kwargs={'pk': self.failure_report1.pk}), data={
-            "workshop": self.workshop.pk
+        response = client.post(reverse('failure-report-action', kwargs={'pk': self.failure_report1.pk}), data={
+            "workshop": self.workshop.pk,
+            "action":"assign"
         })
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
@@ -474,8 +477,9 @@ class FailureReportTestCase(TestCase):
     def test_assigned_failure_report_cannot_be_assigned_again(self):
         client = APIClient()
         client.force_authenticate(self.manager)
-        response = client.post(reverse('failure-report-assign',kwargs={'pk':self.failure_report2.pk}), data={
-            "workshop": self.workshop.pk
+        response = client.post(reverse('failure-report-action',kwargs={'pk':self.failure_report2.pk}), data={
+            "workshop": self.workshop.pk,
+            "action": "assign"
         })
         self.assertEqual(response.status_code,status.HTTP_400_BAD_REQUEST)
         self.assertIn('Failure report is not in PENDING status.',str(response.json()))
@@ -484,7 +488,9 @@ class FailureReportTestCase(TestCase):
     def test_manager_can_dismiss_failure_report(self):
         client = APIClient()
         client.force_authenticate(self.manager)
-        response = client.post(reverse('failure-report-dismiss',kwargs={'pk':self.failure_report1.pk}))
+        response = client.post(reverse('failure-report-action',kwargs={'pk':self.failure_report1.pk}),data={
+            "action":"dismiss"
+        })
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         # Check that failure report was updated
         failure_report = FailureReport.objects.get(id=self.failure_report1.id)
@@ -493,8 +499,9 @@ class FailureReportTestCase(TestCase):
     def test_manager_cannot_dismiss_failure_report_not_managed_by_himself(self):
         client = APIClient()
         client.force_authenticate(self.manager2)
-        response = client.post(reverse('failure-report-dismiss', kwargs={'pk': self.failure_report1.pk}), data={
-            "workshop": self.workshop.pk
+        response = client.post(reverse('failure-report-action', kwargs={'pk': self.failure_report1.pk}), data={
+            "workshop": self.workshop.pk,
+            "action":"dismiss"
         })
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
@@ -502,7 +509,9 @@ class FailureReportTestCase(TestCase):
         client = APIClient()
         client.force_authenticate(self.standard)
 
-        response = client.post(reverse('failure-report-dismiss',kwargs={'pk':self.failure_report1.pk}))
+        response = client.post(reverse('failure-report-action',kwargs={'pk':self.failure_report1.pk}),data={
+            "action":"dismiss"
+        })
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
@@ -510,7 +519,9 @@ class FailureReportTestCase(TestCase):
         client = APIClient()
         client.force_authenticate(self.manager)
 
-        response = client.post(reverse('failure-report-resolve',kwargs={'pk':self.failure_report4.pk}))
+        response = client.post(reverse('failure-report-action',kwargs={'pk':self.failure_report4.pk}),data={
+            "action":"resolve"
+        })
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         fr=FailureReport.objects.get(id=self.failure_report4.id)
         rr=RepairReport.objects.get(id=self.repair_report3.id)
@@ -523,13 +534,17 @@ class FailureReportTestCase(TestCase):
     def test_manager_cannot_resolve_failure_report_managed_by_other_manager(self):
         client = APIClient()
         client.force_authenticate(self.manager2)
-        response=client.post(reverse('failure-report-resolve',kwargs={'pk':self.failure_report4.pk}))
+        response=client.post(reverse('failure-report-action',kwargs={'pk':self.failure_report4.pk}),data={
+            "action":"resolve"
+        })
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_manager_cannot_resolve_pending_failure_report(self):
         client = APIClient()
         client.force_authenticate(self.manager)
-        response=client.post(reverse('failure-report-resolve',kwargs={'pk':self.failure_report1.pk}))
+        response=client.post(reverse('failure-report-action',kwargs={'pk':self.failure_report1.pk}),data={
+            "action":"resolve"
+        })
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('Failure report is not in ASSIGNED status.',str(response.json()))
 
@@ -538,7 +553,7 @@ class FailureReportTestCase(TestCase):
         self.repair_report3.save()
         client = APIClient()
         client.force_authenticate(self.manager)
-        response = client.post(reverse('failure-report-resolve', kwargs={'pk': self.failure_report4.pk}))
+        response = client.post(reverse('failure-report-action', kwargs={'pk': self.failure_report4.pk}),data={"action":"resolve"})
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('Repair report is not in READY status.', str(response.json()))
         self.repair_report3.status = 'R'
@@ -549,8 +564,9 @@ class FailureReportTestCase(TestCase):
         client = APIClient()
         client.force_authenticate(self.manager)
 
-        response = client.post(reverse('failure-report-reassign',kwargs={'pk':self.failure_report2.pk}), data={
-            "workshop": str(self.workshop.id)
+        response = client.post(reverse('failure-report-action',kwargs={'pk':self.failure_report2.pk}), data={
+            "workshop": str(self.workshop.id),
+            "action":"reassign"
         })
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -562,8 +578,9 @@ class FailureReportTestCase(TestCase):
     def test_manager_cannot_reassign_failure_report_not_managed_by_himself(self):
         client = APIClient()
         client.force_authenticate(self.manager2)
-        response = client.post(reverse('failure-report-reassign', kwargs={'pk': self.failure_report2.pk}), data={
-            "workshop": self.workshop.pk
+        response = client.post(reverse('failure-report-action', kwargs={'pk': self.failure_report2.pk}), data={
+            "workshop": self.workshop.pk,
+            "action":"reassign"
         })
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
@@ -572,8 +589,9 @@ class FailureReportTestCase(TestCase):
         client = APIClient()
         client.force_authenticate(self.standard)
 
-        response = client.post(reverse('failure-report-reassign', kwargs={'pk': self.failure_report2.pk}), data={
-            "workshop": str(self.workshop2.id)
+        response = client.post(reverse('failure-report-action', kwargs={'pk': self.failure_report2.pk}), data={
+            "workshop": str(self.workshop2.id),
+            "action":"reassign"
         })
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
@@ -582,8 +600,9 @@ class FailureReportTestCase(TestCase):
     def test_manager_cannot_reassign_pending_failure_report(self):
         client=APIClient()
         client.force_authenticate(self.manager)
-        response = client.post(reverse('failure-report-reassign', kwargs={'pk': self.failure_report1.pk}), data={
-            "workshop": str(self.workshop2.id)
+        response = client.post(reverse('failure-report-action', kwargs={'pk': self.failure_report1.pk}), data={
+            "workshop": str(self.workshop2.id),
+            "action":"reassign"
         })
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('Failure report is not in ASSIGNED or STOPPED status.', str(response.json()))
@@ -591,8 +610,9 @@ class FailureReportTestCase(TestCase):
     def test_manager_cannot_reassign_non_existent_failure_report(self):
         client=APIClient()
         client.force_authenticate(self.manager)
-        response = client.post(reverse('failure-report-reassign',kwargs={'pk':'5f35a175-73bb-44ac-b007-bb1d7ff3f13b'}), data={
-            "workshop": str(self.workshop2.id)
+        response = client.post(reverse('failure-report-action',kwargs={'pk':'5f35a175-73bb-44ac-b007-bb1d7ff3f13b'}), data={
+            "workshop": str(self.workshop2.id),
+            "action":"reassign"
         })
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
@@ -606,7 +626,9 @@ class FailureReportTestCase(TestCase):
             description="Engine is not starting properly",
             report_author=self.standard,
             status='P')
-        response=client.post(reverse('failure-report-manage',kwargs={'pk':failure_report.pk}))
+        response=client.post(reverse('failure-report-management',kwargs={'pk':failure_report.pk}), data={
+            "action":"obtain"
+        })
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         failure_report = FailureReport.objects.get(id=failure_report.id)
         self.assertEqual(failure_report.managed_by, self.manager2)
@@ -614,7 +636,9 @@ class FailureReportTestCase(TestCase):
     def test_manager_cannot_manage_managed_failure_report(self):
         client = APIClient()
         client.force_authenticate(self.manager2)
-        response = client.post(reverse('failure-report-manage', kwargs={'pk': self.failure_report1.pk}))
+        response = client.post(reverse('failure-report-management', kwargs={'pk': self.failure_report1.pk}),data={
+            "action":"obtain"
+        })
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('Failure report is already managed by another manager.', str(response.json()))
 
@@ -627,7 +651,9 @@ class FailureReportTestCase(TestCase):
             description="Engine is not starting properly",
             report_author=self.standard,
             status='R')
-        response=client.post(reverse('failure-report-manage', kwargs={'pk': failure_report.pk}))
+        response=client.post(reverse('failure-report-management', kwargs={'pk': failure_report.pk}),data={
+            "action":"obtain"
+        })
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('Failure report is not in PENDING, ASSIGNED or STOPPED status.', str(response.json()))
 
@@ -640,21 +666,27 @@ class FailureReportTestCase(TestCase):
             description="Engine is not starting properly",
             report_author=self.standard,
             status='D')
-        response=client.post(reverse('failure-report-manage', kwargs={'pk': failure_report.pk}))
+        response=client.post(reverse('failure-report-management', kwargs={'pk': failure_report.pk}),data={
+            "action":"obtain"
+        })
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('Failure report is not in PENDING, ASSIGNED or STOPPED status.', str(response.json()))
 
     def test_manager_cannot_manage_failure_report_already_managed_by_himself(self):
         client = APIClient()
         client.force_authenticate(self.manager)
-        response = client.post(reverse('failure-report-manage', kwargs={'pk': self.failure_report1.pk}))
+        response = client.post(reverse('failure-report-management', kwargs={'pk': self.failure_report1.pk}),data={
+            "action":"obtain"
+        })
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('Failure report is already managed by you.', str(response.json()))
 
     def test_manager_can_release_failure_report_he_manages_himself(self):
         client = APIClient()
         client.force_authenticate(self.manager)
-        response=client.post(reverse('failure-report-release', kwargs={'pk': self.failure_report1.pk}))
+        response=client.post(reverse('failure-report-management', kwargs={'pk': self.failure_report1.pk}),data={
+            "action":"release"
+        })
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         failure=FailureReport.objects.get(pk=self.failure_report1.pk)
         self.assertEqual(failure.managed_by, None)
@@ -668,21 +700,25 @@ class FailureReportTestCase(TestCase):
             description="Engine is not starting properly",
             report_author=self.standard,
             status='P')
-        response=client.post(reverse('failure-report-release', kwargs={'pk': failure_report.pk}))
+        response=client.post(reverse('failure-report-management', kwargs={'pk': failure_report.pk}),data={
+            'action':'release'
+        })
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertIn('You do not have permission to perform this action.', str(response.json()))
 
     def test_manager_cannot_release_failure_report_managed_by_other_manager(self):
         client = APIClient()
         client.force_authenticate(self.manager2)
-        response=client.post(reverse('failure-report-release', kwargs={'pk': self.failure_report1.pk}))
+        response=client.post(reverse('failure-report-management', kwargs={'pk': self.failure_report1.pk}),data={
+            "action":"release"
+        })
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertIn('You do not have permission to perform this action.', str(response.json()))
 
     def test_manager_cannot_release_resolved_failure_report(self):
         client = APIClient()
         client.force_authenticate(self.manager)
-        response=client.post(reverse('failure-report-release', kwargs={'pk': self.failure_report3.pk}))
+        response=client.post(reverse('failure-report-management', kwargs={'pk': self.failure_report3.pk}),data={"action":"release"})
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('Failure report is not in PENDING, ASSIGNED or STOPPED status.', str(response.json()))
 
@@ -697,7 +733,9 @@ class FailureReportTestCase(TestCase):
             status='D',
             managed_by=self.manager
         )
-        response=client.post(reverse('failure-report-release', kwargs={'pk': failure_report.pk}))
+        response=client.post(reverse('failure-report-management', kwargs={'pk': failure_report.pk}),data={
+            "action":"release"
+        })
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('Failure report is not in PENDING, ASSIGNED or STOPPED status.', str(response.json()))
 

@@ -28,71 +28,106 @@ class UserLocationAssignmentTestCase(TestCase):
     def test_admin_can_assign_unassigned_standard_to_branch(self):
         client = APIClient()
         client.force_authenticate(self.admin)
-        response = client.post(reverse('user-assign',kwargs={'pk':self.standard2.pk}),data={'location':self.branch2.pk})
+        response = client.post(reverse('user-assignment',kwargs={'pk':self.standard2.pk}),data={
+            'location':self.branch2.pk,
+            "action":"assign"
+        })
         assert response.status_code == status.HTTP_200_OK
 
     def test_manager_can_assign_unassigned_standard_to_branch(self):
         client = APIClient()
         client.force_authenticate(self.manager)
-        response = client.post(reverse('user-assign',kwargs={'pk':self.standard2.pk}), data={'location': self.branch2.pk})
+        response = client.post(reverse('user-assignment',kwargs={'pk':self.standard2.pk}), data={
+            'location': self.branch2.pk,
+            "action":"assign"
+        })
         assert response.status_code == status.HTTP_200_OK
 
     def test_manager_cannot_be_assigned_to_location(self):
         client = APIClient()
         client.force_authenticate(self.admin)
-        response = client.post(reverse('user-assign',kwargs={'pk':self.manager.pk}), data={'location': self.branch2.pk})
+        response = client.post(reverse('user-assignment',kwargs={'pk':self.manager.pk}), data={
+            'location': self.branch2.pk,
+            "action":"assign"
+        })
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_admin_can_assign_unassigned_mechanic_to_workshop(self):
         client = APIClient()
         client.force_authenticate(self.admin)
-        response = client.post(reverse('user-assign',kwargs={'pk':self.mechanic2.pk}),data={'location':self.workshop2.pk})
+        response = client.post(reverse('user-assignment',kwargs={'pk':self.mechanic2.pk}),data={
+            'location':self.workshop2.pk,
+            'action':"assign"
+        })
         assert response.status_code == status.HTTP_200_OK
 
     def test_manager_can_assign_unassigned_mechanic_to_workshop(self):
         client = APIClient()
         client.force_authenticate(self.manager)
-        response = client.post(reverse('user-assign',kwargs={'pk':self.mechanic2.pk}), data={'location': self.workshop2.pk})
+        response = client.post(reverse('user-assignment',kwargs={'pk':self.mechanic2.pk}), data={
+            'location': self.workshop2.pk,
+            "action":"assign"
+        })
         assert response.status_code == status.HTTP_200_OK
 
     def test_standard_user_cannot_be_assigned_to_workshop(self):
         client = APIClient()
         client.force_authenticate(self.admin)
-        response = client.post(reverse('user-assign',kwargs={'pk':self.standard2.pk}), data={'location': self.workshop2.pk})
+        response = client.post(reverse('user-assignment',kwargs={'pk':self.standard2.pk}), data={
+            'location': self.workshop2.pk,
+            "action":"assign"
+        })
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         self.assertIn('Standard users can be assigned to branch locations only.',str(response.json()))
 
     def test_mechanic_cannot_be_assigned_to_branch(self):
         client = APIClient()
         client.force_authenticate(self.admin)
-        response = client.post(reverse('user-assign',kwargs={'pk':self.mechanic2.pk}), data={'location': self.branch2.pk})
+        response = client.post(reverse('user-assignment',kwargs={'pk':self.mechanic2.pk}), data={
+            'location': self.branch2.pk,
+            "action":"assign"
+        })
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         self.assertIn('Mechanic users can be assigned to workshop locations only.', str(response.json()))
 
     def test_assigned_user_cannot_be_assigned_twice_to_same_location(self):
         client = APIClient()
         client.force_authenticate(self.admin)
-        response = client.post(reverse('user-assign',kwargs={'pk':self.standard1.pk}), data={'location': self.branch1.pk})
+        response = client.post(reverse('user-assignment',kwargs={'pk':self.standard1.pk}), data={
+            'location': self.branch1.pk,
+            "action": "assign"
+        })
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         self.assertIn('This user is already assigned to a location', str(response.json()))
-        response = client.post(reverse('user-assign',kwargs={'pk':self.mechanic1.pk}), data={'user': self.mechanic1.pk, 'location': self.workshop1.pk})
+        response = client.post(reverse('user-assignment',kwargs={'pk':self.mechanic1.pk}), data={
+            'location': self.workshop1.pk,
+            "action": "assign"
+        })
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         self.assertIn('This user is already assigned to a location', str(response.json()))
 
     def test_assigned_user_cannot_be_assigned_twice_to_different_location(self):
         client = APIClient()
         client.force_authenticate(self.admin)
-        response = client.post(reverse('user-assign',kwargs={'pk':self.standard1.pk}), data={'location': self.branch2.pk})
+        response = client.post(reverse('user-assignment',kwargs={'pk':self.standard1.pk}), data={
+            'location': self.branch2.pk,
+            "action":"assign"
+        })
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         self.assertIn('This user is already assigned to a location', str(response.json()))
-        response = client.post(reverse('user-assign',kwargs={'pk':self.mechanic1.pk}), data={'user': self.mechanic1.pk, 'location': self.workshop2.pk})
+        response = client.post(reverse('user-assignment',kwargs={'pk':self.mechanic1.pk}), data={
+            'location': self.workshop2.pk,
+            "action":"assign"
+        })
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         self.assertIn('This user is already assigned to a location', str(response.json()))
 
     def test_admin_can_unassign_assigned_standard_from_branch(self):
         client = APIClient()
         client.force_authenticate(self.admin)
-        response = client.post(reverse('user-unassign',kwargs={'pk':self.standard1.pk}))
+        response = client.post(reverse('user-assignment',kwargs={'pk':self.standard1.pk}),data={
+            "action":"unassign"
+        })
         assert response.status_code == status.HTTP_200_OK
         self.assertIn('User has been unassigned.',str(response.json()))
         self.assertEqual(UserLocationAssignment.objects.filter(user=self.standard1,location=self.branch1).count(),0)
@@ -100,7 +135,9 @@ class UserLocationAssignmentTestCase(TestCase):
     def test_admin_can_unassign_assigned_mechanic_from_workshop(self):
         client = APIClient()
         client.force_authenticate(self.admin)
-        response = client.post(reverse('user-unassign',kwargs={'pk':self.mechanic1.pk}))
+        response = client.post(reverse('user-assignment',kwargs={'pk':self.mechanic1.pk}),data={
+            "action":"unassign"
+        })
         assert response.status_code == status.HTTP_200_OK
         self.assertIn('User has been unassigned.',str(response.json()))
         self.assertEqual(UserLocationAssignment.objects.filter(user=self.mechanic1,location=self.workshop1).count(),0)
@@ -108,7 +145,9 @@ class UserLocationAssignmentTestCase(TestCase):
     def test_manager_can_unassign_assigned_standard_from_branch(self):
         client = APIClient()
         client.force_authenticate(self.manager)
-        response = client.post(reverse('user-unassign',kwargs={'pk':self.standard1.pk}))
+        response = client.post(reverse('user-assignment',kwargs={'pk':self.standard1.pk}),data={
+            "action":"unassign"
+        })
         assert response.status_code == status.HTTP_200_OK
         self.assertIn('User has been unassigned.',str(response.json()))
         self.assertEqual(UserLocationAssignment.objects.filter(user=self.standard1,location=self.branch1).count(),0)
@@ -116,7 +155,9 @@ class UserLocationAssignmentTestCase(TestCase):
     def test_manager_can_unassign_assigned_mechanic_from_workshop(self):
         client = APIClient()
         client.force_authenticate(self.manager)
-        response = client.post(reverse('user-unassign',kwargs={'pk':self.mechanic1.pk}))
+        response = client.post(reverse('user-assignment',kwargs={'pk':self.mechanic1.pk}),data={
+            "action":"unassign"
+        })
         assert response.status_code == status.HTTP_200_OK
         self.assertIn('User has been unassigned.',str(response.json()))
         self.assertEqual(UserLocationAssignment.objects.filter(user=self.mechanic1,location=self.workshop1).count(),0)
@@ -124,22 +165,32 @@ class UserLocationAssignmentTestCase(TestCase):
     def test_unassigned_standard_user_and_mechanic_user_cannot_be_unassigned(self):
         client = APIClient()
         client.force_authenticate(self.admin)
-        response = client.post(reverse('user-unassign',kwargs={'pk':self.standard2.pk}))
+        response = client.post(reverse('user-assignment',kwargs={'pk':self.standard2.pk}),data={
+            "action":"unassign"
+        })
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         self.assertIn('User is not assigned to any location.',str(response.json()))
-        response = client.post(reverse('user-unassign', kwargs={'pk': self.mechanic2.pk}))
+        response = client.post(reverse('user-assignment', kwargs={'pk': self.mechanic2.pk}),data={
+            "action":"unassign"
+        })
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         self.assertIn('User is not assigned to any location.', str(response.json()))
 
     def test_non_standard_non_mechanic_user_cannot_be_unassigned(self):
         client = APIClient()
         client.force_authenticate(self.admin)
-        response = client.post(reverse('user-unassign',kwargs={'pk':self.manager.pk}))
+        response = client.post(reverse('user-assignment',kwargs={'pk':self.manager.pk}),data={
+            "action":"unassign"
+        })
         assert response.status_code == status.HTTP_404_NOT_FOUND
         self.assertIn('There is no standard user or mechanic user with provided ID.',str(response.json()))
-        response = client.post(reverse('user-unassign',kwargs={'pk':self.superuser.pk}))
+        response = client.post(reverse('user-assignment',kwargs={'pk':self.superuser.pk}),data={
+            "action":"unassign"
+        })
         assert response.status_code == status.HTTP_404_NOT_FOUND
         self.assertIn('There is no standard user or mechanic user with provided ID.',str(response.json()))
-        response = client.post(reverse('user-unassign',kwargs={'pk':self.admin.pk}))
+        response = client.post(reverse('user-assignment',kwargs={'pk':self.admin.pk}),data={
+            "action":"unassign"
+        })
         assert response.status_code == status.HTTP_404_NOT_FOUND
         self.assertIn('There is no standard user or mechanic user with provided ID.', str(response.json()))

@@ -14,7 +14,7 @@ class UserTestCase(TestCase):
         self.admin2=User.objects.create_user(first_name="Albrecht", last_name="Entrati", username="albent1111",email="testowy75@gmail.com", password="test1234", role="admin", phone_number="121212121", is_new_account=False)
         self.standard1=User.objects.create_user(first_name="Jan", last_name="Nowak", username="jannow1111", email="testowy2@gmail.com", password="test123456789", role="standard", phone_number="333333333", is_new_account=False)
         self.standard2=User.objects.create_user(first_name="Krzysztof", last_name="Pawlak", username="krzpaw1111", email="testowy22@gmail.com",password="test1234", role="standard", phone_number="444444444", is_new_account=False)
-        self.standard3=User.objects.create_user(first_name="Kamil", last_name="Grosicki", username="kamgro1111", email="testowy23@gmail.com",password="test1234", role="standard", phone_number="555555555", is_new_account=False)
+        self.standard3=User.objects.create_user(first_name="Kamil", last_name="Grosicki", username="kamgro1111", email="testowy23@gmail.com",password="Wykopanyziemniak21", role="standard", phone_number="555555555", is_new_account=False)
         self.manager=User.objects.create_user(first_name="Szymon", last_name="Chasowski", username="szycha1111", email="testowy3@gmail.com",password="test1234", role="manager", phone_number="666666666", is_new_account=False)
         self.mechanic1=User.objects.create_user(first_name="Karol", last_name="Nawrak", username="karnaw1111", email="testowy26@gmail.com",password="test1234", role="mechanic", phone_number="777777777", is_new_account=False)
         self.mechanic2=User.objects.create_user(first_name="Jimmy", last_name="Mcgill", username="jimmcg1111",email="testowy27@gmail.com", password="test1234", role="mechanic", phone_number="888888888", is_new_account=False)
@@ -556,10 +556,10 @@ class UserTestCase(TestCase):
 
     def test_user_cannot_set_the_same_password_during_change(self):
         client = APIClient()
-        client.force_authenticate(self.standard1)
+        client.force_authenticate(self.standard3)
         response = client.post(reverse('user-password-change'),
-                               data={'old_password': 'test123456789', 'new_password': 'test123456789',
-                                     'confirm_password': 'test123456789'})
+                               data={'old_password': 'Wykopanyziemniak21', 'new_password': 'Wykopanyziemniak21',
+                                     'confirm_password': 'Wykopanyziemniak21'})
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('This password is already used.',str(response.json()))
 
@@ -595,10 +595,10 @@ class UserTestCase(TestCase):
         client = APIClient()
         response = client.post(reverse('user-reset-password'), data={'user': self.standard1.id,
                                                                  'token': default_token_generator.make_token(
-                                                                     self.standard1), 'password': 'test123456789',
-                                                                 'confirm_password': 'test123456789'})
+                                                                     self.standard1), 'password': 'Paliniak333333',
+                                                                 'confirm_password': 'Paliniak333333'})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        user = authenticate(username=self.standard1.username, password='test123456789')
+        user = authenticate(username=self.standard1.username, password='Paliniak333333')
         self.assertEqual(user, User.objects.get(pk=self.standard1.pk))
 
     def test_user_cannot_reset_password_without_proper_token(self):
@@ -661,15 +661,15 @@ class UserTestCase(TestCase):
     def test_user_can_activate_his_account(self):
 
         client=APIClient()
-        response=client.post(reverse('user-activation'),data={'user':self.fresh_account.id, 'token':default_token_generator.make_token(self.fresh_account),'password':'test123456789','confirm_password':'test123456789'})
+        response=client.post(reverse('user-activation'),data={'user':self.fresh_account.id, 'token':default_token_generator.make_token(self.fresh_account),'password':'Kaliniak123456','confirm_password':'Kaliniak123456'})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        user=authenticate(username=self.fresh_account.username, password='test123456789')
+        user=authenticate(username=self.fresh_account.username, password='Kaliniak123456')
         self.assertEqual(user, User.objects.get(pk=self.fresh_account.pk))
 
     def test_user_cannot_activate_his_account_without_proper_token(self):
 
         client = APIClient()
-        response = client.post(reverse('user-activation'), data={'user': self.fresh_account.id,'token': default_token_generator.make_token(self.standard1), 'password': 'test123456789','confirm_password': 'test123456789'})
+        response = client.post(reverse('user-activation'), data={'user': self.fresh_account.id,'token': default_token_generator.make_token(self.standard1), 'password': 'Kaliniak123456','confirm_password': 'Kaliniak123456'})
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('Invalid user or token.',str(response.json()))
 
@@ -726,7 +726,9 @@ class UserTestCase(TestCase):
     def test_admin_can_set_inactive_account(self):
         client = APIClient()
         client.force_authenticate(self.admin1)
-        response=client.post(reverse('user-set-inactive',kwargs={'pk':str(self.standard1.pk)}))
+        response=client.post(reverse('user-status',kwargs={'pk':str(self.standard1.pk)}),data={
+            'status':'inactive'
+        })
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn('User has been deactivated',str(response.json()))
         self.assertEqual(User.objects.get(pk=self.standard1.pk).is_active, False)
@@ -736,7 +738,9 @@ class UserTestCase(TestCase):
         self.standard1.save()
         client = APIClient()
         client.force_authenticate(self.admin1)
-        response = client.post(reverse('user-set-active',kwargs={'pk':str(self.standard1.pk)}))
+        response = client.post(reverse('user-status',kwargs={'pk':str(self.standard1.pk)}),data={
+            'status':'active'
+        })
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn('User has been activated',str(response.json()))
         self.assertEqual(User.objects.get(pk=self.standard1.pk).is_active, True)
@@ -744,7 +748,9 @@ class UserTestCase(TestCase):
     def test_admin_cannot_set_active_fresh_account(self):
         client = APIClient()
         client.force_authenticate(self.admin1)
-        response=client.post(reverse('user-set-active',kwargs={'pk':str(self.fresh_account.pk)}))
+        response=client.post(reverse('user-status',kwargs={'pk':str(self.fresh_account.pk)}),data={
+            'status':'active'
+        })
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('This account is yet to be activated by account owner',str(response.json()))
 
@@ -753,13 +759,17 @@ class UserTestCase(TestCase):
         self.standard1.save()
         client = APIClient()
         client.force_authenticate(self.admin1)
-        response=client.post(reverse('user-set-inactive',kwargs={'pk':str(self.standard1.pk)}))
+        response=client.post(reverse('user-status',kwargs={'pk':str(self.standard1.pk)}),data={
+            'status':'inactive'
+        })
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('User is not active.',str(response.json()))
+        self.assertIn('User is already inactive.',str(response.json()))
 
     def test_admin_cannot_set_inactive_other_admin(self):
         client = APIClient()
         client.force_authenticate(self.admin1)
-        response=client.post(reverse('user-set-inactive',kwargs={'pk':str(self.admin2.pk)}))
+        response=client.post(reverse('user-status',kwargs={'pk':str(self.admin2.pk)}),data={
+            'status':'inactive'
+        })
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertIn('You do not have permission to perform this action.',str(response.json()))

@@ -41,7 +41,6 @@ INSTALLED_APPS = [
     'MechanicallyApp.apps.MechanicallyappConfig',
     'django_extensions',
     'rest_framework',
-    'rest_framework_simplejwt.token_blacklist',
     'django_filters'
 ]
 
@@ -122,6 +121,9 @@ AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
+    {
+        'NAME': 'pwned_passwords_django.validators.PwnedPasswordsValidator',
+    },
 ]
 
 
@@ -147,8 +149,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 AUTH_USER_MODEL = 'MechanicallyApp.User'
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
-
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
@@ -168,22 +169,10 @@ REST_FRAMEWORK = {
         'password_reset_request':'3/hour',
         'password_reset':'10/hour',
         'account_activation': '10/hour',
-        'obtain_token_pair': '8/minute',
+        'obtain_csrf': '3/minute',
+        'login':'3/minute',
     }
 }
-
-SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
-    "REFRESH_TOKEN_LIFETIME": timedelta(hours=12),
-    "ALGORITHM": "RS256",
-    "SIGNING_KEY": env('JWT_SIGNING_KEY'),
-    "VERIFYING_KEY": env('JWT_VERIFYING_KEY'),
-    "ROTATE_REFRESH_TOKENS": True,
-    "BLACKLIST_AFTER_ROTATION": True,
-    "TOKEN_REFRESH_SERIALIZER": "MechanicallyApp.serializers.CustomTokenRefreshSerializer",
-}
-
-
 
 EMAIL_BACKEND='django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST=env('EMAIL_HOST')

@@ -391,7 +391,9 @@ class RepairReportTestCase(TestCase):
     def test_mechanic_can_set_repair_report_as_ready(self):
         client=APIClient()
         client.force_authenticate(user=self.mechanic3)
-        response=client.post(reverse('repair-report-set-ready', kwargs={'pk': self.repair_report5.pk}))
+        response=client.post(reverse('repair-report-status', kwargs={'pk': self.repair_report5.pk}),data={
+            "status":"ready"
+        })
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         rr=RepairReport.objects.get(pk=self.repair_report5.pk)
         self.assertEqual(rr.status,'R')
