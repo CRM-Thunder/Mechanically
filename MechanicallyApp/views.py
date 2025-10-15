@@ -1,6 +1,5 @@
 from django.contrib.auth import authenticate, login, logout
 from django.db import transaction
-from django.middleware.csrf import get_token
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 
@@ -23,7 +22,7 @@ from rest_framework.views import APIView
 from .permissions import IsManager, IsAdmin, \
     IsAdminOrSuperuserAndTargetUserHasLowerRole, IsStandardAssignedToBranch, IsMechanicAssignedToWorkshop, \
     IsManagerThatManagesSelectedFailureReport, IsAccountOwner
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import NotFound, ValidationError
 from django.db.models import Q
 from rest_framework import filters
@@ -33,16 +32,6 @@ from .filters import LocationFilter, VehicleFilter, UserFilter, FailureReportFil
 
 
 #dodawać i edytować Manufacturera może administrator, reszta może wypisywać
-
-class ObtainCSRFTokenAPIView(APIView):
-    permission_classes = [AllowAny]
-    http_method_names = ['get']
-    throttle_classes = [ScopedRateThrottle]
-    throttle_scope= 'obtain_csrf'
-    def get(self, request):
-        response=Response(status=status.HTTP_200_OK, data={'message': 'CSRF cookie is set.'})
-        response['X-CSRF-Token']=get_token(request)
-        return response
 
 class UserLoginAPIView(APIView):
     permission_classes = [~IsAuthenticated]

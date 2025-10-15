@@ -2,7 +2,6 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
-    path('csrf', views.ObtainCSRFTokenAPIView.as_view(), name='csrf'),
     path('login', views.UserLoginAPIView.as_view(), name='login'),
     path('logout', views.UserLogoutAPIView.as_view(), name='logout'),
     path('manufacturers',views.ManufacturerListCreateAPIView.as_view(), name='manufacturer-list'),
