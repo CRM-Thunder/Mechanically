@@ -16,7 +16,7 @@ from .serializers import ManufacturerSerializer, LocationCreateRetrieveSerialize
     FailureReportReassignSerializer, \
     RepairReportRetrieveUpdateSerializer, RepairReportListSerializer, LocationUpdateSerializer, LocationListSerializer, \
     RepairReportRejectionSerializer, RepairReportRejectionListSerializer, RepairReportRejectionRetrieveSerializer,\
-    PasswordChangeSerializer
+    PasswordChangeSerializer, LoginSerializer
 from rest_framework import generics, status
 from rest_framework.views import APIView
 from .permissions import IsManager, IsAdmin, \
@@ -25,7 +25,6 @@ from .permissions import IsManager, IsAdmin, \
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import NotFound, ValidationError
 from django.db.models import Q
-from rest_framework import filters
 from django_filters import rest_framework as external_filters
 from .filters import LocationFilter, VehicleFilter, UserFilter, FailureReportFilter, RepairReportFilter, \
     RepairReportRejectionFilter
@@ -39,13 +38,17 @@ class UserLoginAPIView(APIView):
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = 'login'
     def post(self, request):
-        username = request.data.get('username')
-        password = request.data.get('password')
+        serializer=LoginSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        username = serializer.validated_data.get('username')
+        password = serializer.validated_data.get('password')
         if username is None or password is None:
-            return ValidationError('Credentials were not provided.')
+            raise ValidationError({'detail':'Credentials were not provided.'})
+        if not User.objects.filter(username=username).exists():
+            raise ValidationError({'detail':'Username or password is incorrect.'})
         user=authenticate(request, username=username, password=password)
         if user is None:
-            return ValidationError(detail='Username or password is incorrect.')
+            raise ValidationError({'detail':'Username or password is incorrect.'})
         login(request, user)
         return Response({'message': 'Login successful.'}, status=status.HTTP_200_OK)
 
@@ -60,7 +63,7 @@ class ManufacturerListCreateAPIView(generics.ListCreateAPIView):
     queryset = Manufacturer.objects.all()
     serializer_class = ManufacturerSerializer
     http_method_names = ['head', 'get', 'post']
-    filter_backends = (filters.SearchFilter,)
+    filter_backends = (external_filters.DjangoFilterBackend,)
     search_fields = ['name']
     def get_permissions(self):
         if self.request.method.lower() == 'post':
@@ -355,20 +358,20 @@ class UserChangeStatusAPIView(APIView):
         req_status = request.data.get('status')
         if req_status == 'active':
             if user.is_active:
-                raise ValidationError('User is already active.')
+                raise ValidationError({'detail':'User is already active.'})
             if user.is_new_account:
-                raise ValidationError('This account is yet to be activated by account owner.')
+                raise ValidationError({'detail':'This account is yet to be activated by account owner.'})
             user.is_active = True
             user.save()
             return Response({'message': 'User has been activated.'}, status=status.HTTP_200_OK)
         elif req_status == 'inactive':
             if not user.is_active:
-                raise ValidationError('User is already inactive.')
+                raise ValidationError({'detail':'User is already inactive.'})
             user.is_active = False
             user.save()
             return Response({'message': 'User has been deactivated.'}, status=status.HTTP_200_OK)
         else:
-            raise ValidationError('Only available status types are: active, inactive.')
+            raise ValidationError({'status':'Only available status types are: active, inactive.'})
 
 
 
@@ -383,7 +386,7 @@ class UserAssignmentAPIView(APIView):
         action=request.data.get('action')
         if action == 'assign':
             if UserLocationAssignment.objects.filter(user_id=pk).exists():
-                raise ValidationError('This user is already assigned to a location.')
+                raise ValidationError({'detail':'This user is already assigned to a location.'})
             serializer = UserLocationAssignmentSerializer(data=request.data, context={'user': user})
             serializer.is_valid(raise_exception=True)
             serializer.save()
@@ -391,11 +394,11 @@ class UserAssignmentAPIView(APIView):
         elif action == 'unassign':
             obj = UserLocationAssignment.objects.filter(user_id=pk).first()
             if obj is None:
-                raise ValidationError(detail='User is not assigned to any location.')
+                raise ValidationError({'detail':'User is not assigned to any location.'})
             obj.delete()
             return Response({'message': 'User has been unassigned.'}, status=status.HTTP_200_OK)
         else:
-            raise ValidationError('Only available actions are: assign, unassign.')
+            raise ValidationError({'action':'Only available actions are: assign, unassign.'})
 
 
 #widok ten służy do tworzenia failure reportów przez standardowego użytkownika oraz wypisywania ich przez menadżera i admina
@@ -444,10 +447,10 @@ class FailureReportActionAPIView(APIView):
 
         if action == 'assign':
             if failure_report.status != 'P':
-                raise ValidationError(detail='Failure report is not in PENDING status.')
+                raise ValidationError({'detail':'Failure report is not in PENDING status.'})
 
             if failure_report.workshop_id is not None:
-                raise ValidationError('Failure report has already been assigned to a workshop.')
+                raise ValidationError({'detail':'Failure report has already been assigned to a workshop.'})
 
             serializer = FailureReportAssignSerializer(data=request.data, context={'failure_report': failure_report})
             serializer.is_valid(raise_exception=True)
@@ -456,7 +459,7 @@ class FailureReportActionAPIView(APIView):
 
         elif action == 'dismiss':
             if failure_report.status != 'P':
-                raise ValidationError('Failure report is not in PENDING status.')
+                raise ValidationError({'detail':'Failure report is not in PENDING status.'})
 
             failure_report.status = 'D'
             failure_report.save()
@@ -464,7 +467,7 @@ class FailureReportActionAPIView(APIView):
 
         elif action == 'reassign':
             if failure_report.status not in ('A', 'S'):
-                raise ValidationError('Failure report is not in ASSIGNED or STOPPED status.')
+                raise ValidationError({'detail':'Failure report is not in ASSIGNED or STOPPED status.'})
 
             serializer = FailureReportReassignSerializer(data=request.data, context={'failure_report': failure_report})
             serializer.is_valid(raise_exception=True)
@@ -473,11 +476,11 @@ class FailureReportActionAPIView(APIView):
 
         elif action == 'resolve':
             if failure_report.status != 'A':
-                raise ValidationError('Failure report is not in ASSIGNED status.')
+                raise ValidationError({'detail':'Failure report is not in ASSIGNED status.'})
 
             repair_report = failure_report.repair_report
             if repair_report.status != 'R':
-                raise ValidationError('Repair report is not in READY status.')
+                raise ValidationError({'detail':'Repair report is not in READY status.'})
 
             with transaction.atomic():
                 vehicle = failure_report.vehicle
@@ -489,7 +492,7 @@ class FailureReportActionAPIView(APIView):
                 vehicle.save()
             return Response({'message': 'Failure report has been resolved.'}, status=status.HTTP_200_OK)
         else:
-            raise ValidationError('Only available actions are: assign, reassign, dismiss, resolve')
+            raise ValidationError({'action':'Only available actions are: assign, reassign, dismiss, resolve'})
 
 #widok do obtainowania i releasowania failure reportu przez managera
 class FailureReportManagementAPIView(APIView):
@@ -502,14 +505,14 @@ class FailureReportManagementAPIView(APIView):
             raise NotFound("There is no failure report with provided ID.")
 
         if failure_report.status not in ('P', 'A', 'S'):
-            raise ValidationError(detail='Failure report is not in PENDING, ASSIGNED or STOPPED status.')
+            raise ValidationError({'detail':'Failure report is not in PENDING, ASSIGNED or STOPPED status.'})
 
         action=request.data.get('action')
         if action == 'obtain':
             if failure_report.managed_by is not None:
                 if failure_report.managed_by == self.request.user:
-                    raise ValidationError(detail='Failure report is already managed by you.')
-                raise ValidationError(detail='Failure report is already managed by another manager.')
+                    raise ValidationError({'detail':'Failure report is already managed by you.'})
+                raise ValidationError({'detail':'Failure report is already managed by another manager.'})
 
             failure_report.managed_by = self.request.user
             failure_report.save()
@@ -520,7 +523,7 @@ class FailureReportManagementAPIView(APIView):
             failure_report.save()
             return Response({'message': 'Failure report is no longer managed by your account.'},status=status.HTTP_200_OK)
         else:
-            raise ValidationError('Only available actions are: obtain, release.')
+            raise ValidationError({'action':'Only available actions are: obtain, release.'})
 
 #widok do wypisywania wszystkich repair reportów/do filtrowania, tylko dla menadżera i admina
 class RepairReportListAPIView(generics.ListAPIView):
@@ -617,20 +620,20 @@ class RepairReportChangeStatusAPIView(APIView):
         req_status=request.data.get('status')
         if req_status=='ready':
             if repair_report.status != 'A':
-                raise ValidationError(detail='Repair report is not in ACTIVE status.')
+                raise ValidationError({'detail':'Repair report is not in ACTIVE status.'})
             else:
                 repair_report.status = 'R'
                 repair_report.save()
                 return Response({'message': 'Repair report has been set as ready.'}, status=status.HTTP_200_OK)
         elif req_status=='active':
             if repair_report.status != 'R':
-                raise ValidationError(detail='Repair report is not in READY status.')
+                raise ValidationError({'detail':'Repair report is not in READY status.'})
             else:
                 repair_report.status = 'A'
                 repair_report.save()
                 return Response({'message':'Repair report has been set as active.'}, status=status.HTTP_200_OK)
         else:
-            raise ValidationError(detail='Available status types are: ready, active.')
+            raise ValidationError({'status':'Available status types are: ready, active.'})
 
 
 
@@ -645,7 +648,7 @@ class RepairReportRejectAPIView(APIView):
         if repair_report is None:
             raise NotFound("There is no repair report with provided ID.")
         if repair_report.status != 'R':
-            raise ValidationError(detail='Repair report is not in READY status.')
+            raise ValidationError({'detail':'Repair report is not in READY status.'})
 
         serializer=RepairReportRejectionSerializer(data=request.data,context={'repair_report':repair_report})
         serializer.is_valid(raise_exception=True)

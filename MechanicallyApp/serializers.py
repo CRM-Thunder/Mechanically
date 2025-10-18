@@ -11,6 +11,16 @@ from .validators import manufacturer_name_validator, first_name_validator, last_
 from .generators import generate_username, generate_random_password
 from .mail_services import send_activation_email, send_reset_password_email
 
+class LoginSerializer(serializers.Serializer):
+    username=serializers.CharField(write_only=True)
+    password=serializers.CharField(write_only=True)
+    def validate(self, data):
+        username = data.get('username')
+        password = data.get('password')
+        if len(username) != 10 or len(password) >256:
+            raise serializers.ValidationError('Username or password is incorrect.')
+        return data
+
 # serializer służący do wypisywania, dodawania oraz aktualizowania Location
 class LocationCreateRetrieveSerializer(serializers.ModelSerializer):
     location_type=serializers.CharField(max_length=1, required=True)
@@ -71,10 +81,14 @@ class UserCreateSerializer(serializers.ModelSerializer):
         read_only_fields = ['id']
 
     def validate_first_name(self, value):
+        if len(value) < 3:
+            raise serializers.ValidationError('First name must be at least 3 characters')
         first_name_validator(value)
         return value
 
     def validate_last_name(self, value):
+        if len(value) < 3:
+            raise serializers.ValidationError('Last name must be at least 3 characters')
         last_name_validator(value)
         return value
 
@@ -131,10 +145,14 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         read_only_fields = ['id']
 
     def validate_first_name(self, value):
+        if len(value) < 3:
+            raise serializers.ValidationError('First name must be at least 3 characters')
         first_name_validator(value)
         return value
 
     def validate_last_name(self, value):
+        if len(value) < 3:
+            raise serializers.ValidationError('Last name must be at least 3 characters')
         last_name_validator(value)
         return value
 
@@ -206,10 +224,10 @@ class AccountActivationSerializer(serializers.Serializer):
         confirm_password = data.get('confirm_password')
         user=User.objects.filter(pk=user_id, is_active=False, is_new_account=True).first()
         if user is None or not default_token_generator.check_token(user, token):
-            raise serializers.ValidationError('Invalid user or token.')
+            raise serializers.ValidationError({'detail':'Invalid user or token.'})
 
         if password != confirm_password:
-            raise serializers.ValidationError('Passwords do not match.')
+            raise serializers.ValidationError({'detail':'Passwords do not match.'})
 
         try:
             validate_password(password, user)
@@ -254,14 +272,14 @@ class ResetPasswordSerializer(serializers.Serializer):
         confirm_password = data.get('confirm_password')
         user = User.objects.filter(pk=user_id, is_active=True).first()
         if user is None or not default_token_generator.check_token(user, token):
-            raise serializers.ValidationError('Invalid user or token.')
+            raise serializers.ValidationError({'detail':'Invalid user or token.'})
         try:
             validate_password(password, user)
         except DjangoValidationError as err:
             raise serializers.ValidationError({'password': err.messages})
 
         if password != confirm_password:
-            raise serializers.ValidationError('Passwords do not match.')
+            raise serializers.ValidationError({'detail':'Passwords do not match.'})
         self._user_instance = user
         return data
 
@@ -284,16 +302,16 @@ class PasswordChangeSerializer(serializers.Serializer):
         confirm_password=data.get('confirm_password')
         user=authenticate(username=user.username, password=old_password)
         if user is None:
-            raise serializers.ValidationError('Invalid password.')
+            raise serializers.ValidationError({'detail':'Invalid password.'})
         try:
             validate_password(new_password, user)
         except DjangoValidationError as err:
             raise serializers.ValidationError({'password': err.messages})
 
         if new_password == old_password:
-            raise serializers.ValidationError('This password is already used.')
+            raise serializers.ValidationError({'detail':'This password is already used.'})
         if new_password != confirm_password:
-            raise serializers.ValidationError('Passwords do not match.')
+            raise serializers.ValidationError({'detail':'Passwords do not match.'})
         return data
 
     def save(self, **kwargs):
@@ -323,9 +341,9 @@ class UserLocationAssignmentSerializer(serializers.Serializer):
         user = self.context.get('user')
         location = data.get('location')
         if user.role=='standard' and location.location_type!='B':
-            raise serializers.ValidationError('Standard users can be assigned to branch locations only.')
+            raise serializers.ValidationError({'detail':'Standard users can be assigned to branch locations only.'})
         if user.role=='mechanic' and location.location_type!='W':
-            raise serializers.ValidationError('Mechanic users can be assigned to workshop locations only.')
+            raise serializers.ValidationError({'detail':'Mechanic users can be assigned to workshop locations only.'})
         return data
 
     def save(self, **kwargs):
@@ -514,7 +532,7 @@ class RepairReportRetrieveUpdateSerializer(serializers.ModelSerializer):
 
     def validate(self,data):
         if self.instance.status!='A':
-            raise serializers.ValidationError('Repair report cannot be modified if not in ACTIVE status.')
+            raise serializers.ValidationError({'detail':'Repair report cannot be modified if not in ACTIVE status.'})
         return super().validate(data)
 
 class RepairReportListSerializer(serializers.ModelSerializer):
