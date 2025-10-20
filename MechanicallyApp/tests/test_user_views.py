@@ -1,7 +1,7 @@
 from django.contrib.auth import authenticate
 from django.contrib.auth.tokens import default_token_generator
 from django.test import TestCase
-from MechanicallyApp.models import User, Location, UserLocationAssignment
+from MechanicallyApp.models import User, Location, UserLocationAssignment, City
 from rest_framework import status
 from django.urls import reverse
 from rest_framework.test import APIClient
@@ -9,6 +9,7 @@ from django.core import mail
 
 class UserTestCase(TestCase):
     def setUp(self):
+        self.city = City.objects.create(name='Szczecin')
         self.superuser=User.objects.create_superuser(first_name="Grzegorz", last_name="Kowalski", username="grzkow1111", email="testowy4@gmail.com", password="test1234", role="admin", phone_number="111111111", is_new_account=False)
         self.admin1=User.objects.create_user(first_name="Piotr", last_name="Testowy", username="piotes1111", email="testowy@gmail.com", password="test1234", role="admin", phone_number="222222222", is_new_account=False)
         self.admin2=User.objects.create_user(first_name="Albrecht", last_name="Entrati", username="albent1111",email="testowy75@gmail.com", password="test1234", role="admin", phone_number="121212121", is_new_account=False)
@@ -19,8 +20,12 @@ class UserTestCase(TestCase):
         self.mechanic1=User.objects.create_user(first_name="Karol", last_name="Nawrak", username="karnaw1111", email="testowy26@gmail.com",password="test1234", role="mechanic", phone_number="777777777", is_new_account=False)
         self.mechanic2=User.objects.create_user(first_name="Jimmy", last_name="Mcgill", username="jimmcg1111",email="testowy27@gmail.com", password="test1234", role="mechanic", phone_number="888888888", is_new_account=False)
         self.mechanic3=User.objects.create_user(first_name="Lalo", last_name="Salamanca", username="lalsal1111",email="testowy28@gmail.com", password="test1234", role="mechanic",phone_number="999999999", is_new_account=False)
-        self.branch=Location.objects.create(name='SIEDZIBA',phone_number='123456789',email="test@gmail.com",address="Testowa 1 Gdynia", location_type='B')
-        self.workshop=Location.objects.create(name='WARSZTAT', phone_number='133456789', email="test2@gmail.com",address="Testowa 2 Gdynia", location_type='W')
+        self.branch=Location.objects.create(name='SIEDZIBA',phone_number='123456789',email="test@gmail.com", city=self.city,
+            street_name='Parkowa',
+            building_number=1, location_type='B')
+        self.workshop=Location.objects.create(name='WARSZTAT', phone_number='133456789', email="test2@gmail.com", city=self.city,
+            street_name='Parkowa',
+            building_number=1, location_type='W')
         UserLocationAssignment.objects.create(user=self.standard1, location=self.branch)
         UserLocationAssignment.objects.create(user=self.standard2, location=self.branch)
         UserLocationAssignment.objects.create(user=self.mechanic1, location=self.workshop)
@@ -172,13 +177,16 @@ class UserTestCase(TestCase):
         client.force_authenticate(user)
         response = client.post(reverse('user-list'), data={
             "first_name": "Jakub",
-            "last_name": "O'Hara",
+            "last_name": "Poziomka",
             "email": "delivered@resend.dev",
             "phone_number": "628327263",
             "role": "mechanic"
         })
-        assert response.status_code == status.HTTP_201_CREATED
+        print(response.json())
+        self.assertEqual(response.status_code,status.HTTP_201_CREATED)
         created_account=User.objects.get(first_name="Jakub")
+        self.assertEqual(created_account.role,'mechanic')
+        self.assertEqual(created_account.is_active, False)
         assert created_account.role=="mechanic" and created_account.is_active==False
         self.assertEqual(len(mail.outbox), 1)
 

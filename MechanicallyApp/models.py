@@ -26,6 +26,10 @@ class User(AbstractUser):
     def __str__(self):
         return self.first_name + " " + self.last_name
 
+class City(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=100)
+
 class Location(models.Model):
     class LocationTypeChoices(models.TextChoices):
         BRANCH='B'
@@ -35,10 +39,14 @@ class Location(models.Model):
     phone_number = models.CharField(max_length=9, unique=True, validators=[MinLengthValidator(9)])
     email = models.EmailField()
     id=models.UUIDField(primary_key=True,default=uuid.uuid4,editable=False)
-    #narazie jako pojedyncze pole, w razie czego można rozbudować
-    address=models.CharField(max_length=50)
+    street_name=models.CharField(max_length=100, validators=[MinLengthValidator(3)])
+    building_number=models.PositiveSmallIntegerField()
+    unit_number=models.PositiveSmallIntegerField(null=True, blank=True)
+    city=models.ForeignKey(City,on_delete=models.CASCADE)
     # noinspection PyUnresolvedReferences
     location_type=models.CharField(max_length=1,choices=LocationTypeChoices.choices)
+
+
 
 
 class Vehicle(models.Model):
@@ -78,7 +86,6 @@ class Vehicle(models.Model):
         UNAVAILABLE='U'
     id=models.UUIDField(primary_key=True,default=uuid.uuid4,editable=False)
     vin=models.CharField(max_length=17,unique=True, validators=[MinLengthValidator(17)])
-    kilometers=models.PositiveIntegerField()
     manufacturer=models.ForeignKey('Manufacturer',on_delete=models.PROTECT, related_name='vehicles')
     vehicle_model=models.CharField(max_length=20)
     year=models.PositiveIntegerField()

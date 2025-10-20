@@ -1,5 +1,4 @@
 from rest_framework.permissions import BasePermission
-from rest_framework.exceptions import MethodNotAllowed
 from MechanicallyApp.models import UserLocationAssignment
 
 

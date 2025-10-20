@@ -1,11 +1,12 @@
 from django.test import TestCase
-from MechanicallyApp.models import User, Location, UserLocationAssignment
+from MechanicallyApp.models import User, Location, UserLocationAssignment, City
 from rest_framework import status
 from django.urls import reverse
 from rest_framework.test import APIClient
 
 class UserLocationAssignmentTestCase(TestCase):
     def setUp(self):
+        self.city=City.objects.create(name='Szczecin')
         self.superuser=User.objects.create_superuser(first_name="Grzegorz", last_name="Kowalski", username="grzkow1111", email="testowy4@gmail.com", password="test1234", role="admin", phone_number="111111111", is_new_account=False)
         self.admin=User.objects.create_user(first_name="Piotr", last_name="Testowy", username="piotes1111",
                                  email="testowy@gmail.com", password="test1234", role="admin", phone_number="222222222", is_new_account=False)
@@ -16,12 +17,20 @@ class UserLocationAssignmentTestCase(TestCase):
         self.manager=User.objects.create_user(first_name="Szymon", last_name="Chasowski", username="szycha1111", email="testowy3@gmail.com",password="test1234", role="manager", phone_number="666666666", is_new_account=False)
         self.mechanic1=User.objects.create_user(first_name="Karol", last_name="Nawrak", username="karnaw1111", email="testowy26@gmail.com",password="test1234", role="mechanic", phone_number="777777777", is_new_account=False)
         self.mechanic2=User.objects.create_user(first_name="Jimmy", last_name="Mcgill", username="jimmcg1111",email="testowy27@gmail.com", password="test1234", role="mechanic", phone_number="888888888", is_new_account=False)
-        self.branch1=Location.objects.create(name='SIEDZIBA A',phone_number='123456789',email="test@gmail.com",address="Testowa 1 Gdynia", location_type='B')
-        self.workshop1=Location.objects.create(name='WARSZTAT A', phone_number='133456789', email="test2@gmail.com",address="Testowa 2 Gdynia", location_type='W')
+        self.branch1=Location.objects.create(name='SIEDZIBA A',phone_number='123456789',email="test@gmail.com", city=self.city,
+            street_name='Parkowa',
+            building_number=1, location_type='B')
+        self.workshop1=Location.objects.create(name='WARSZTAT A', phone_number='133456789', email="test2@gmail.com", city=self.city,
+            street_name='Parkowa',
+            building_number=1, location_type='W')
         self.branch2 = Location.objects.create(name='SIEDZIBA B', phone_number='123456489', email="test3@gmail.com",
-                                               address="Testowa 3 Gdynia", location_type='B')
+                                               city=self.city,
+                                               street_name='Parkowa',
+                                               building_number=1, location_type='B')
         self.workshop2 = Location.objects.create(name='WARSZTAT B', phone_number='133256789', email="test4@gmail.com",
-                                                 address="Testowa 4 Gdynia", location_type='W')
+                                                 city=self.city,
+                                                 street_name='Parkowa',
+                                                 building_number=1, location_type='W')
         UserLocationAssignment.objects.create(user=self.standard1, location=self.branch1)
         UserLocationAssignment.objects.create(user=self.mechanic1, location=self.workshop1)
         

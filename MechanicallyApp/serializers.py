@@ -6,10 +6,24 @@ from django.db import transaction
 from rest_framework import serializers
 from rest_framework.exceptions import PermissionDenied, NotFound
 
-from .models import Manufacturer, User, Location, UserLocationAssignment, Vehicle, FailureReport, RepairReport, RepairReportRejection
-from .validators import manufacturer_name_validator, first_name_validator, last_name_validator, phone_number_validator, location_name_validator, vin_validator, vehicle_model_validator, vehicle_year_validator, natural_text_validator
+from .models import Manufacturer, User, Location, UserLocationAssignment, Vehicle, FailureReport, RepairReport, \
+    RepairReportRejection, City
+from .validators import manufacturer_name_validator, first_name_validator, last_name_validator, phone_number_validator, \
+    location_name_validator, vin_validator, vehicle_model_validator, vehicle_year_validator, natural_text_validator, \
+    city_name_validator, street_name_validator
 from .generators import generate_username, generate_random_password
 from .mail_services import send_activation_email, send_reset_password_email
+
+class CitySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = City
+        fields=['id','name']
+        read_only_fields=['id']
+
+    def validate_name(self,value):
+        city_name_validator(value)
+        return value
+
 
 class LoginSerializer(serializers.Serializer):
     username=serializers.CharField(write_only=True)
@@ -22,7 +36,7 @@ class LoginSerializer(serializers.Serializer):
         return data
 
 # serializer służący do wypisywania, dodawania oraz aktualizowania Location
-class LocationCreateRetrieveSerializer(serializers.ModelSerializer):
+class LocationCreateSerializer(serializers.ModelSerializer):
     location_type=serializers.CharField(max_length=1, required=True)
     class Meta:
         model = Location
@@ -44,6 +58,17 @@ class LocationCreateRetrieveSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError('Location type must be one of the following: %s' % ', '.join(valid_location_types))
         return value
 
+    def validate_street_number(self,value):
+        street_name_validator(value)
+        return value
+
+class LocationRetrieveSerializer(serializers.ModelSerializer):
+    city=serializers.CharField(source='city.name',read_only=True)
+    class Meta:
+        model = Location
+        fields = ['id','name', 'phone_number', 'email' ,'city', 'street_name','building_number','unit_number']
+        read_only_fields = ['id','name', 'phone_number', 'email' ,'city', 'street_name','building_number','unit_number']
+
 class LocationListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Location
@@ -53,7 +78,7 @@ class LocationListSerializer(serializers.ModelSerializer):
 class LocationUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Location
-        fields = ['id','name','phone_number','email','address']
+        fields = ['id','name','phone_number','email', 'city','street_name','building_number','unit_number']
         read_only_fields = ['id']
 
     def validate_name(self, value):
@@ -66,7 +91,7 @@ class LocationUpdateSerializer(serializers.ModelSerializer):
 
 #serializer służący do wyświetlania informacji o przydziale z poziomu UserSerializer
 class UserLocationAssignmentForUserSerializer(serializers.ModelSerializer):
-    location=LocationCreateRetrieveSerializer(read_only=True)
+    location=LocationCreateSerializer(read_only=True)
     class Meta:
         model = UserLocationAssignment
         fields = ['location','assign_date']
@@ -353,7 +378,7 @@ class UserLocationAssignmentSerializer(serializers.Serializer):
 
 #serializer służący do wypisania informacji o lokacji mechanika/standarda
 class UserNestedLocationAssignmentSerializer(serializers.ModelSerializer):
-    location=LocationCreateRetrieveSerializer(read_only=True)
+    location=LocationCreateSerializer(read_only=True)
     class Meta:
         model = UserLocationAssignment
         fields = ['location','assign_date']
@@ -362,7 +387,7 @@ class UserNestedLocationAssignmentSerializer(serializers.ModelSerializer):
 #serializer do wypisywania wszystkich informacji o pojeździe
 class VehicleRetrieveSerializer(serializers.ModelSerializer):
     manufacturer=ManufacturerSerializer(read_only=True)
-    branch=LocationCreateRetrieveSerializer(read_only=True)
+    branch=LocationCreateSerializer(read_only=True)
     class Meta:
         model=Vehicle
         fields='__all__'
@@ -476,7 +501,7 @@ class FailureReportInfoForRepairReportSerializer(serializers.ModelSerializer):
 
 class FailureReportRetrieveSerializer(serializers.ModelSerializer):
     vehicle=VehicleRetrieveSerializer(read_only=True)
-    workshop=LocationCreateRetrieveSerializer(read_only=True)
+    workshop=LocationCreateSerializer(read_only=True)
     class Meta:
         model=FailureReport
         fields='__all__'

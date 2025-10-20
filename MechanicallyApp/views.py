@@ -4,8 +4,8 @@ from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 
 from .models import Manufacturer, Location, UserLocationAssignment, Vehicle, User, FailureReport, RepairReport, \
-    RepairReportRejection
-from .serializers import ManufacturerSerializer, LocationCreateRetrieveSerializer, \
+    RepairReportRejection, City
+from .serializers import ManufacturerSerializer, LocationCreateSerializer, \
     UserNestedLocationAssignmentSerializer, \
     VehicleCreateUpdateSerializer, VehicleRetrieveSerializer, VehicleListSerializer, AccountActivationSerializer, \
     UserCreateSerializer, UserListSerializer, UserUpdateSerializer, ResetPasswordSerializer, \
@@ -15,8 +15,8 @@ from .serializers import ManufacturerSerializer, LocationCreateRetrieveSerialize
     FailureReportRetrieveSerializer, FailureReportAssignSerializer, \
     FailureReportReassignSerializer, \
     RepairReportRetrieveUpdateSerializer, RepairReportListSerializer, LocationUpdateSerializer, LocationListSerializer, \
-    RepairReportRejectionSerializer, RepairReportRejectionListSerializer, RepairReportRejectionRetrieveSerializer,\
-    PasswordChangeSerializer, LoginSerializer
+    RepairReportRejectionSerializer, RepairReportRejectionListSerializer, RepairReportRejectionRetrieveSerializer, \
+    PasswordChangeSerializer, LoginSerializer, CitySerializer, LocationRetrieveSerializer
 from rest_framework import generics, status
 from rest_framework.views import APIView
 from .permissions import IsManager, IsAdmin, \
@@ -64,7 +64,6 @@ class ManufacturerListCreateAPIView(generics.ListCreateAPIView):
     serializer_class = ManufacturerSerializer
     http_method_names = ['head', 'get', 'post']
     filter_backends = (external_filters.DjangoFilterBackend,)
-    search_fields = ['name']
     def get_permissions(self):
         if self.request.method.lower() == 'post':
             self.permission_classes = [IsAdmin]
@@ -72,6 +71,18 @@ class ManufacturerListCreateAPIView(generics.ListCreateAPIView):
             self.permission_classes = [IsAuthenticated]
         return super().get_permissions()
 
+class CityListCreateAPIView(generics.ListCreateAPIView):
+    queryset = City.objects.all()
+    serializer_class = CitySerializer
+    http_method_names = ['head', 'get', 'post']
+    filter_backends = (external_filters.DjangoFilterBackend,)
+    permission_classes = [IsAdmin]
+
+class CityRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = City.objects.all()
+    serializer_class = CitySerializer
+    http_method_names = ['head', 'get', 'put', 'patch', 'delete']
+    permission_classes = [IsAdmin]
 
 class ManufacturerRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Manufacturer.objects.all()
@@ -94,7 +105,7 @@ class LocationListCreateAPIView(generics.ListCreateAPIView):
     filterset_class = LocationFilter
     def get_serializer_class(self):
         if self.request.method.lower()=='post':
-            return LocationCreateRetrieveSerializer
+            return LocationCreateSerializer
         return LocationListSerializer
 
     def get_permissions(self):
@@ -111,7 +122,7 @@ class LocationRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView
     def get_serializer_class(self):
         if self.request.method.lower() in ('put','patch','delete'):
             return LocationUpdateSerializer
-        return LocationCreateRetrieveSerializer
+        return LocationRetrieveSerializer
 
     def get_permissions(self):
         if self.request.method.lower() in ('get','head'):

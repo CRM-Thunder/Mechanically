@@ -1,6 +1,6 @@
 from django.test import TestCase
 from MechanicallyApp.models import User, Manufacturer, Vehicle, Location, UserLocationAssignment, FailureReport, \
-    RepairReport
+    RepairReport, City
 from rest_framework import status
 from django.urls import reverse
 from rest_framework.test import APIClient
@@ -82,13 +82,15 @@ class FailureReportTestCase(TestCase):
         # Create manufacturers
         self.dodge = Manufacturer.objects.create(name='DODGE')
         self.man = Manufacturer.objects.create(name='MAN')
-
+        self.city = City.objects.create(name='Szczecin')
         # Create locations
         self.branch = Location.objects.create(
             name='SIEDZIBA',
             phone_number='123456789',
             email="test@gmail.com",
-            address="Testowa 1 Gdynia",
+            city=self.city,
+            street_name='Parkowa',
+            building_number=1,
             location_type='B'
         )
 
@@ -96,7 +98,9 @@ class FailureReportTestCase(TestCase):
             name='SIEDZIBA B',
             phone_number='163456789',
             email="test3@gmail.com",
-            address="Portowa 3 Szczecin",
+            city=self.city,
+            street_name='Parkowa',
+            building_number=1,
             location_type='B'
         )
 
@@ -104,14 +108,18 @@ class FailureReportTestCase(TestCase):
             name='WARSZTAT',
             phone_number='133456789',
             email="test2@gmail.com",
-            address="Testowa 2 Gdynia",
+            city=self.city,
+            street_name='Parkowa',
+            building_number=1,
             location_type='W'
         )
         self.workshop2 = Location.objects.create(
             name='WARSZTAT B',
             phone_number='544333222',
             email="test25323@gmail.com",
-            address="Testowa 10 Gdynia",
+            city=self.city,
+            street_name='Parkowa',
+            building_number=1,
             location_type='W'
         )
 

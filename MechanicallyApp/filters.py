@@ -1,5 +1,5 @@
 from django_filters import rest_framework as filters
-from .models import Location, Vehicle, User, FailureReport, RepairReport, RepairReportRejection, Manufacturer
+from .models import Location, Vehicle, User, FailureReport, RepairReport, RepairReportRejection, Manufacturer, City
 
 
 class LocationFilter(filters.FilterSet):
@@ -13,6 +13,13 @@ class LocationFilter(filters.FilterSet):
 class ManufacturerFilter(filters.FilterSet):
     class Meta:
         model = Manufacturer
+        fields = {
+            'name': ['icontains'],
+        }
+
+class CityFilter(filters.FilterSet):
+    class Meta:
+        model = City
         fields = {
             'name': ['icontains'],
         }

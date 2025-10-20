@@ -1,12 +1,13 @@
 from django.test import TestCase
 from MechanicallyApp.models import User, Manufacturer, Vehicle, Location, UserLocationAssignment, FailureReport, \
-    RepairReport
+    RepairReport, City
 from rest_framework import status
 from django.urls import reverse
 from rest_framework.test import APIClient
 
 class VehicleTestCase(TestCase):
     def setUp(self):
+        self.city=City.objects.create(name='Szczecin')
         self.admin=User.objects.create_user(first_name="Piotr", last_name="Testowy", username="piotes1111", email="testowy@gmail.com", password="test1234", role="admin", phone_number="987654321", is_new_account=False)
         self.standard=User.objects.create_user(first_name="Jan", last_name="Nowak", username="jannow1111", email="testowy2@gmail.com", password="test1234", role="standard", phone_number="987654322", is_new_account=False)
         self.mechanic = User.objects.create_user(first_name="Test", last_name="Testow", username="testes1111",
@@ -18,14 +19,22 @@ class VehicleTestCase(TestCase):
         self.dodge=Manufacturer.objects.create(name='DODGE')
         self.man=Manufacturer.objects.create(name='MAN')
         self.branch=Location.objects.create(name='SIEDZIBA', phone_number='123456789', email="test@gmail.com",
-                                address="Testowa 1 Gdynia", location_type='B')
+                                            city=self.city,
+                                            street_name='Parkowa',
+                                            building_number=1, location_type='B')
 
         self.branch2 = Location.objects.create(name='SIEDZIBA B', phone_number='163456789', email="test3@gmail.com",
-                                         address="Portowa 3 Szczecin", location_type='B')
+                                               city=self.city,
+                                               street_name='Parkowa',
+                                               building_number=1, location_type='B')
         self.workshop=Location.objects.create(name='WARSZTAT', phone_number='133456789', email="test2@gmail.com",
-                                address="Testowa 2 Gdynia", location_type='W')
+                                              city=self.city,
+                                              street_name='Parkowa',
+                                              building_number=1, location_type='W')
         self.workshop2 = Location.objects.create(name='WARSZTAT B', phone_number='133456719', email="test643@gmail.com",
-                                                address="Testowa 52 Gdynia", location_type='W')
+                                                 city=self.city,
+                                                 street_name='Parkowa',
+                                                 building_number=1, location_type='W')
         self.vehicle1=Vehicle.objects.create(vin='5GZCZ63B93S896664',kilometers=400,vehicle_type='PC',year=2018,vehicle_model="SRT Hellcat",fuel_type='P',availability='A',location=self.branch, manufacturer=self.dodge)
         self.vehicle2 = Vehicle.objects.create(vin='5GZCZ63B93S896564', kilometers=500, vehicle_type='CO', year=2019,
                                           vehicle_model="Lion City", fuel_type='D', availability='A', location=self.branch2,

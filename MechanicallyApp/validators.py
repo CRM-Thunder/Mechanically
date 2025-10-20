@@ -9,7 +9,7 @@ def first_name_validator(first_name):
 
 
 def last_name_validator(last_name):
-    if not re.match(r"^[A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]{2,}(?:[-' ][A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]+)*$", last_name):
+    if not re.match(r"^[A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]{2,}(?:[-' ][A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]{2,})*$", last_name):
         raise serializers.ValidationError('Last name must start with capital letter and contain only letters, spaces, apostrophes, hyphens.')
 
 
@@ -38,6 +38,13 @@ def vehicle_model_validator(vehicle_model):
     if not re.match(r'^[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?(?: [A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?)*$', vehicle_model):
         raise serializers.ValidationError('Vehicle model may contain letters, numbers, hyphens, dots, and single spaces between words. It cannot start or end with a space, hyphen, or dot.')
 
+def street_name_validator(street_name):
+    if not re.match(r'^[A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]+(?: [A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]+){0,2}$',street_name):
+        raise serializers.ValidationError('Street name may start with capital letter, consist of letters and single spaces only.')
+
+def city_name_validator(city_name):
+    if not re.match(r'^[A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]{2,}(?: [A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]+){0,3}$',city_name):
+        raise serializers.ValidationError('City name may start with capital letter, consist of letters and single spaces only.')
 def natural_text_validator(text):
     if not re.match(r'^[A-Za-zĄąĆćĘęŁłŃńÓóŚśŹźŻż0-9\s.,:!?\'"\-()@]*$', text):
         raise serializers.ValidationError('"Only letters, numbers, spaces, and basic punctuation are allowed."')
