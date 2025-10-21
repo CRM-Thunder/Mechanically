@@ -391,7 +391,7 @@ class VehicleRetrieveSerializer(serializers.ModelSerializer):
     class Meta:
         model=Vehicle
         fields='__all__'
-        read_only_fields=['id','vin','kilometers','manufacturer','vehicle_model','year','vehicle_type','fuel_type','availability','branch']
+        read_only_fields=['id','vin','manufacturer','vehicle_model','year','vehicle_type','fuel_type','availability','branch']
 
 #serializer do listowania informacji o pojeździe
 class VehicleListSerializer(serializers.ModelSerializer):
@@ -406,7 +406,7 @@ class VehicleCreateUpdateSerializer(serializers.ModelSerializer):
     fuel_type = serializers.CharField(max_length=2)
     class Meta:
         model = Vehicle
-        fields = ['id','vin','kilometers','manufacturer','vehicle_model','year','vehicle_type','fuel_type','location','availability']
+        fields = ['id','vin','manufacturer','vehicle_model','year','vehicle_type','fuel_type','location','availability']
         read_only_fields = ['id']
 
     def validate_vin(self,value):
