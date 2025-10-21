@@ -1,8 +1,11 @@
 version: 2
 updates:
   - package-ecosystem: "pip"
-    directory: "/" # root directory
+    directory: "/"
     schedule:
       interval: "weekly"
-    allow:
-      - dependency-type: "all"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
