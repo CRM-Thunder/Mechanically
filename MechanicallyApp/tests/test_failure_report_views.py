@@ -126,7 +126,6 @@ class FailureReportTestCase(TestCase):
         # Create vehicles
         self.vehicle1 = Vehicle.objects.create(
             vin='5GZCZ63B93S896664',
-            kilometers=400,
             vehicle_type='PC',
             year=2018,
             vehicle_model="SRT Hellcat",
@@ -138,7 +137,6 @@ class FailureReportTestCase(TestCase):
 
         self.vehicle2 = Vehicle.objects.create(
             vin='5GZCZ63B93S896564',
-            kilometers=500,
             vehicle_type='CO',
             year=2019,
             vehicle_model="Lion City",
@@ -150,7 +148,6 @@ class FailureReportTestCase(TestCase):
 
         self.vehicle3 = Vehicle.objects.create(
             vin='5GZCZ63B94S896564',
-            kilometers=52400,
             vehicle_type='TR',
             year=2016,
             vehicle_model="TGX Euro 6",
@@ -162,7 +159,6 @@ class FailureReportTestCase(TestCase):
 
         self.vehicle4 = Vehicle.objects.create(
             vin='5GZCZ63B94S891564',
-            kilometers=82400,
             vehicle_type='TR',
             year=2020,
             vehicle_model="TGX Euro 61",
@@ -173,7 +169,6 @@ class FailureReportTestCase(TestCase):
         )
         self.vehicle5 = Vehicle.objects.create(
             vin='5GZCZ63B93S896594',
-            kilometers=5070,
             vehicle_type='CO',
             year=2020,
             vehicle_model="Lion Gate",
@@ -184,7 +179,6 @@ class FailureReportTestCase(TestCase):
         )
         self.vehicle6 = Vehicle.objects.create(
             vin='8GZCZ63B93S896564',
-            kilometers=500,
             vehicle_type='CO',
             year=2019,
             vehicle_model="Lion City",

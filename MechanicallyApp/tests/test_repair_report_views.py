@@ -128,7 +128,6 @@ class RepairReportTestCase(TestCase):
 
         self.vehicleA = Vehicle.objects.create(
             vin='5GZCZ63B93S896664',
-            kilometers=400,
             vehicle_type='PC',
             year=2018,
             vehicle_model="Lion City",
@@ -140,7 +139,6 @@ class RepairReportTestCase(TestCase):
 
         self.vehicleB = Vehicle.objects.create(
             vin='5GZCZ63B93S896564',
-            kilometers=500,
             vehicle_type='CO',
             year=2019,
             vehicle_model="Lion City",
@@ -152,7 +150,6 @@ class RepairReportTestCase(TestCase):
 
         self.vehicleC = Vehicle.objects.create(
             vin='5GZCZ63B94S896564',
-            kilometers=52400,
             vehicle_type='TR',
             year=2016,
             vehicle_model="TGX Euro 6",
@@ -164,7 +161,6 @@ class RepairReportTestCase(TestCase):
 
         self.vehicleD = Vehicle.objects.create(
             vin='5GZCZ63B94S891564',
-            kilometers=82400,
             vehicle_type='TR',
             year=2020,
             vehicle_model="TGX Euro 61",
@@ -175,7 +171,6 @@ class RepairReportTestCase(TestCase):
         )
         self.vehicleE = Vehicle.objects.create(
             vin='5GZCZ63B93S896594',
-            kilometers=5070,
             vehicle_type='CO',
             year=2020,
             vehicle_model="Lion Gate",

@@ -35,17 +35,16 @@ class VehicleTestCase(TestCase):
                                                  city=self.city,
                                                  street_name='Parkowa',
                                                  building_number=1, location_type='W')
-        self.vehicle1=Vehicle.objects.create(vin='5GZCZ63B93S896664',kilometers=400,vehicle_type='PC',year=2018,vehicle_model="SRT Hellcat",fuel_type='P',availability='A',location=self.branch, manufacturer=self.dodge)
-        self.vehicle2 = Vehicle.objects.create(vin='5GZCZ63B93S896564', kilometers=500, vehicle_type='CO', year=2019,
+        self.vehicle1=Vehicle.objects.create(vin='5GZCZ63B93S896664',vehicle_type='PC',year=2018,vehicle_model="SRT Hellcat",fuel_type='P',availability='A',location=self.branch, manufacturer=self.dodge)
+        self.vehicle2 = Vehicle.objects.create(vin='5GZCZ63B93S896564', vehicle_type='CO', year=2019,
                                           vehicle_model="Lion City", fuel_type='D', availability='A', location=self.branch2,
                                           manufacturer=self.man)
-        self.vehicle3 = Vehicle.objects.create(vin='5GZCZ63B94S896564', kilometers=52400, vehicle_type='TR', year=2016,
+        self.vehicle3 = Vehicle.objects.create(vin='5GZCZ63B94S896564',  vehicle_type='TR', year=2016,
                                           vehicle_model="TGX Euro 6", fuel_type='D', availability='A',
                                           manufacturer=self.man)
 
         self.vehicle4 = Vehicle.objects.create(
             vin='5GZCZ63B94S891564',
-            kilometers=82400,
             vehicle_type='TR',
             year=2020,
             vehicle_model="TGX Euro 61",
@@ -57,7 +56,6 @@ class VehicleTestCase(TestCase):
 
         self.vehicle5 = Vehicle.objects.create(
             vin='1GZCZ63B94S891564',
-            kilometers=82400,
             vehicle_type='TR',
             year=2021,
             vehicle_model="TGX Euro 62",
@@ -68,7 +66,6 @@ class VehicleTestCase(TestCase):
         )
         self.vehicle6 = Vehicle.objects.create(
             vin='3GZCZ63B94S891564',
-            kilometers=824210,
             vehicle_type='TR',
             year=2025,
             vehicle_model="TGX Euro 63",
@@ -226,7 +223,6 @@ class VehicleTestCase(TestCase):
         man1=Manufacturer.objects.get(name='MAN')
         response = client.post(reverse('vehicle-list'),data={
           "vin": "5GZCZ63B94S896964",
-          "kilometers": 13,
           "vehicle_type": "TR",
           "year": 2016,
           "vehicle_model": "TGX Euro 7",
@@ -241,7 +237,6 @@ class VehicleTestCase(TestCase):
         man1 = Manufacturer.objects.get(name='MAN')
         response = client.post(reverse('vehicle-list'), data={
             "vin": "4GZCZ63B94S896964",
-            "kilometers": 14,
             "vehicle_type": "TR",
             "year": 2016,
             "vehicle_model": "TGX Euro 8",
@@ -257,7 +252,6 @@ class VehicleTestCase(TestCase):
         man1 = Manufacturer.objects.get(name='MAN')
         response = client.post(reverse('vehicle-list'), data={
             "vin": "5GZCZ63B94S896964",
-            "kilometers": 13,
             "vehicle_type": "TR",
             "year": 2016,
             "vehicle_model": "TGX Euro 7",
@@ -272,7 +266,6 @@ class VehicleTestCase(TestCase):
         client.force_authenticate(user)
         response = client.post(reverse('vehicle-list'), data={
             "vin": "5GZCZ63B94S896964",
-            "kilometers": 13,
             "vehicle_type": "TR",
             "year": 2016,
             "vehicle_model": "TGX Euro 7",
