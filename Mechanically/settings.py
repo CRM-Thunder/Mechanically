@@ -86,11 +86,12 @@ DATABASES = {
         'PASSWORD': env('DB_PASSWORD'),
         'HOST': env('DB_HOST'),
         'PORT': env('DB_PORT'),
-        'CONN_MAX_AGE': 600
-        #TODO: odkomentować do opisywania pracy, zakomentowane po to aby ci/cd przechodziło
+        'CONN_MAX_AGE': 600,
         #'OPTIONS':{
         #    'ssl':{
         #        'ca': env('CA_CERT'),
+        #        'cert': env('CERT'),
+        #        'key': env('KEY'),
         #        'ssl-mode':'VERIFY_CA'
         #    }
         #}

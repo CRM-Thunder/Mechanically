@@ -34,7 +34,6 @@ class Location(models.Model):
     class LocationTypeChoices(models.TextChoices):
         BRANCH='B'
         WORKSHOP='W'
-
     name = models.CharField(max_length=100, unique=True, validators=[MinLengthValidator(3)])
     phone_number = models.CharField(max_length=9, unique=True, validators=[MinLengthValidator(9)])
     email = models.EmailField()
@@ -88,7 +87,7 @@ class Vehicle(models.Model):
     vin=models.CharField(max_length=17,unique=True, validators=[MinLengthValidator(17)])
     manufacturer=models.ForeignKey('Manufacturer',on_delete=models.PROTECT, related_name='vehicles')
     vehicle_model=models.CharField(max_length=20)
-    year=models.PositiveIntegerField()
+    year=models.PositiveSmallIntegerField()
     # noinspection PyUnresolvedReferences
     vehicle_type=models.CharField(max_length=2, choices=VehicleTypeChoices.choices, default=VehicleTypeChoices.OTHER)
     # noinspection PyUnresolvedReferences
