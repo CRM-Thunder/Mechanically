@@ -91,8 +91,7 @@ DATABASES = {
         #    'ssl':{
         #        'ca': env('CA_CERT'),
         #        'cert': env('CERT'),
-        #        'key': env('KEY'),
-        #        'ssl-mode':'VERIFY_CA'
+        #        'key': env('KEY')
         #    }
         #}
     }
