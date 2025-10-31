@@ -1,6 +1,9 @@
 from rest_framework.permissions import BasePermission
 from MechanicallyApp.models import UserLocationAssignment
 
+class DefaultDenyAll(BasePermission):
+    def has_permission(self, request, view):
+        return False
 
 class IsAdmin(BasePermission):
     def has_permission(self, request, view):

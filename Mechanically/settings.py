@@ -13,6 +13,9 @@ from datetime import timedelta
 from pathlib import Path
 import environ
 import os
+
+from MechanicallyApp import permissions
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 env=environ.Env()
@@ -107,7 +110,7 @@ AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
         'OPTIONS': {
-            'min_length': 12
+            'min_length': 15
         }
     },
     {
@@ -153,7 +156,7 @@ REST_FRAMEWORK = {
         'rest_framework.authentication.SessionAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticated',
+        'MechanicallyApp.permissions.DefaultDenyAll',
     ],
     'DEFAULT_RENDERER_CLASSES': [
         'rest_framework.renderers.JSONRenderer',
@@ -186,3 +189,7 @@ CSRF_COOKIE_SAMESITE = 'Strict'
 SESSION_COOKIE_AGE=60*60*12
 SESSION_COOKIE_HTTPONLY=True
 SESSION_COOKIE_SAMESITE='Strict'
+SESSION_EXPIRE_AT_BROWSER_CLOSE=True
+#poniżej konfiguracja tylko po HTTPS
+#SESSION_COOKIE_SECURE=True
+#CSRF_COOKIE_SECURE=True

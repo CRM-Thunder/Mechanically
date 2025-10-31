@@ -511,8 +511,9 @@ class FailureReportManagementAPIView(APIView):
     permission_classes = [IsManagerThatManagesSelectedFailureReport]
 
     def post(self, request, pk):
-        failure_report = FailureReport.objects.filter(pk=pk).first()
-        if failure_report is None:
+        try:
+            failure_report=FailureReport.objects.get(pk=pk)
+        except FailureReport.DoesNotExist:
             raise NotFound("There is no failure report with provided ID.")
 
         if failure_report.status not in ('P', 'A', 'S'):
@@ -544,7 +545,7 @@ class RepairReportListAPIView(generics.ListAPIView):
     permission_classes = [IsManager | IsAdmin]
     filter_backends = (external_filters.DjangoFilterBackend,)
     filterset_class = RepairReportFilter
-
+#TODO: ten querysecik do pracy jako przykład
     def get_queryset(self):
         qs=super().get_queryset()
         if self.request.user.role=='manager':
