@@ -661,8 +661,8 @@ class UserTestCase(TestCase):
         client = APIClient()
         response = client.post(reverse('user-reset-password'), data={'user': self.standard1.id,
                                                                  'token': default_token_generator.make_token(
-                                                                     self.standard1), 'password': 'Kaliniak123456',
-                                                                 'confirm_password': 'Kaliniak654321'})
+                                                                     self.standard1), 'password': 'Kaliniak1234562134',
+                                                                 'confirm_password': 'Kaliniak6543212134'})
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('Passwords do not match.', str(response.json()))
 
