@@ -255,8 +255,9 @@ class PasswordChangeAPIView(APIView):
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = 'password_change'
     def post(self, request):
-        user = User.objects.filter(pk=self.request.user.pk).first()
-        if user is None:
+        try:
+            user=User.objects.get(pk=self.request.user.pk)
+        except User.DoesNotExist:
             raise NotFound('There is no user with provided ID.')
         self.check_object_permissions(self.request, user)
         serializer=PasswordChangeSerializer(data=request.data, context={'user': self.request.user})

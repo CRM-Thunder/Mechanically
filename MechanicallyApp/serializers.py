@@ -247,8 +247,11 @@ class AccountActivationSerializer(serializers.Serializer):
         token = data.get('token')
         password = data.get('password')
         confirm_password = data.get('confirm_password')
-        user=User.objects.filter(pk=user_id, is_active=False, is_new_account=True).first()
-        if user is None or not default_token_generator.check_token(user, token):
+        try:
+            user=User.objects.get(pk=user_id, is_active=False, is_new_account=True)
+        except User.DoesNotExist:
+            raise serializers.ValidationError({'detail':'Invalid user or token.'})
+        if not default_token_generator.check_token(user, token):
             raise serializers.ValidationError({'detail':'Invalid user or token.'})
 
         if password != confirm_password:
