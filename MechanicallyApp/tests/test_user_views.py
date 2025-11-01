@@ -556,10 +556,10 @@ class UserTestCase(TestCase):
     def test_user_can_change_his_password(self):
         client=APIClient()
         client.force_authenticate(self.standard1)
-        response=client.post(reverse('user-password-change'),data={'old_password':'test123456789','new_password':'Kaliniak123456','confirm_password':'Kaliniak123456'})
+        response=client.post(reverse('user-password-change'),data={'old_password':'test123456789','new_password':'Kaliniak1234562134','confirm_password':'Kaliniak1234562134'})
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        user=authenticate(username=self.standard1.username, password='Kaliniak123456')
+        user=authenticate(username=self.standard1.username, password='Kaliniak1234562134')
         self.assertEqual(user,self.standard1)
 
     def test_user_cannot_set_the_same_password_during_change(self):
@@ -603,18 +603,18 @@ class UserTestCase(TestCase):
         client = APIClient()
         response = client.post(reverse('user-reset-password'), data={'user': self.standard1.id,
                                                                  'token': default_token_generator.make_token(
-                                                                     self.standard1), 'password': 'Paliniak333333',
-                                                                 'confirm_password': 'Paliniak333333'})
+                                                                     self.standard1), 'password': 'Paliniak3333332134',
+                                                                 'confirm_password': 'Paliniak3333332134'})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        user = authenticate(username=self.standard1.username, password='Paliniak333333')
+        user = authenticate(username=self.standard1.username, password='Paliniak3333332134')
         self.assertEqual(user, User.objects.get(pk=self.standard1.pk))
 
     def test_user_cannot_reset_password_without_proper_token(self):
         client = APIClient()
         response = client.post(reverse('user-reset-password'), data={'user': self.standard1.id,
                                                                  'token': default_token_generator.make_token(
-                                                                     self.standard2), 'password': 'test123456789',
-                                                                 'confirm_password': 'test123456789'})
+                                                                     self.standard2), 'password': 'test1234567892134',
+                                                                 'confirm_password': 'test1234567892134'})
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('Invalid user or token.', str(response.json()))
 
@@ -669,9 +669,9 @@ class UserTestCase(TestCase):
     def test_user_can_activate_his_account(self):
 
         client=APIClient()
-        response=client.post(reverse('user-activation'),data={'user':self.fresh_account.id, 'token':default_token_generator.make_token(self.fresh_account),'password':'Kaliniak123456','confirm_password':'Kaliniak123456'})
+        response=client.post(reverse('user-activation'),data={'user':self.fresh_account.id, 'token':default_token_generator.make_token(self.fresh_account),'password':'Kaliniak1234562134','confirm_password':'Kaliniak1234562134'})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        user=authenticate(username=self.fresh_account.username, password='Kaliniak123456')
+        user=authenticate(username=self.fresh_account.username, password='Kaliniak1234562134')
         self.assertEqual(user, User.objects.get(pk=self.fresh_account.pk))
 
     def test_user_cannot_activate_his_account_without_proper_token(self):
