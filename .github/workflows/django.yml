@@ -41,6 +41,7 @@ jobs:
     - name: Install Dependencies
       run: |
         python -m pip install --upgrade pip
+        cd dependencies
         pip install -r requirements.txt
     - name: Create .env file
       run: |
@@ -75,6 +76,7 @@ jobs:
       - name: Run sca scan
         run: |
           pip install pip-audit
+          cd dependencies
           pip install -r requirements.txt
           pip-audit --format json | python -m json.tool > sca-scan.json
       - name: Retrieve sca-scan report
