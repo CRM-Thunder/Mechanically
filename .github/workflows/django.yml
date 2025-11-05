@@ -79,7 +79,7 @@ jobs:
           pip-audit --format json | python -m json.tool > sca-scan.json
       - name: Retrieve sca-scan report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: sca-scan-report
           path: sca-scan.json
