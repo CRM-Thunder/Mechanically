@@ -88,13 +88,13 @@ DATABASES = {
         'HOST': env('DB_HOST'),
         'PORT': env('DB_PORT'),
         'CONN_MAX_AGE': 600,
-        #'OPTIONS':{
-        #    'ssl':{
-        #        'ca': env('CA_CERT'),
-        #        'cert': env('CERT'),
-        #        'key': env('KEY')
-        #    }
-        #}
+        'OPTIONS':{
+            'ssl':{
+                'ca': env('CA_CERT'),
+                'cert': env('CERT'),
+                'key': env('KEY')
+            }
+        }
     }
 }
 

@@ -182,7 +182,6 @@ class UserTestCase(TestCase):
             "phone_number": "628327263",
             "role": "mechanic"
         })
-        print(response.json())
         self.assertEqual(response.status_code,status.HTTP_201_CREATED)
         created_account=User.objects.get(first_name="Jakub")
         self.assertEqual(created_account.role,'mechanic')
