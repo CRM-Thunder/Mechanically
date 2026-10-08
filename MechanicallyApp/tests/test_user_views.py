@@ -1,0 +1,782 @@
+from django.contrib.auth import authenticate
+from django.contrib.auth.tokens import default_token_generator
+from django.test import TestCase
+from MechanicallyApp.models import User, Location, UserLocationAssignment, City
+from rest_framework import status
+from django.urls import reverse
+from rest_framework.test import APIClient
+from django.core import mail
+
+class UserTestCase(TestCase):
+    def setUp(self):
+        self.city = City.objects.create(name='Szczecin')
+        self.superuser=User.objects.create_superuser(first_name="Grzegorz", last_name="Kowalski", username="grzkow1111", email="testowy4@gmail.com", password="test1234", role="admin", phone_number="111111111", is_new_account=False)
+        self.admin1=User.objects.create_user(first_name="Piotr", last_name="Testowy", username="piotes1111", email="testowy@gmail.com", password="test1234", role="admin", phone_number="222222222", is_new_account=False)
+        self.admin2=User.objects.create_user(first_name="Albrecht", last_name="Entrati", username="albent1111",email="testowy75@gmail.com", password="test1234", role="admin", phone_number="121212121", is_new_account=False)
+        self.standard1=User.objects.create_user(first_name="Jan", last_name="Nowak", username="jannow1111", email="testowy2@gmail.com", password="test123456789", role="standard", phone_number="333333333", is_new_account=False)
+        self.standard2=User.objects.create_user(first_name="Krzysztof", last_name="Pawlak", username="krzpaw1111", email="testowy22@gmail.com",password="test1234", role="standard", phone_number="444444444", is_new_account=False)
+        self.standard3=User.objects.create_user(first_name="Kamil", last_name="Grosicki", username="kamgro1111", email="testowy23@gmail.com",password="Wykopanyziemniak21", role="standard", phone_number="555555555", is_new_account=False)
+        self.manager=User.objects.create_user(first_name="Szymon", last_name="Chasowski", username="szycha1111", email="testowy3@gmail.com",password="test1234", role="manager", phone_number="666666666", is_new_account=False)
+        self.mechanic1=User.objects.create_user(first_name="Karol", last_name="Nawrak", username="karnaw1111", email="testowy26@gmail.com",password="test1234", role="mechanic", phone_number="777777777", is_new_account=False)
+        self.mechanic2=User.objects.create_user(first_name="Jimmy", last_name="Mcgill", username="jimmcg1111",email="testowy27@gmail.com", password="test1234", role="mechanic", phone_number="888888888", is_new_account=False)
+        self.mechanic3=User.objects.create_user(first_name="Lalo", last_name="Salamanca", username="lalsal1111",email="testowy28@gmail.com", password="test1234", role="mechanic",phone_number="999999999", is_new_account=False)
+        self.branch=Location.objects.create(name='SIEDZIBA',phone_number='123456789',email="test@gmail.com", city=self.city,
+            street_name='Parkowa',
+            building_number=1, location_type='B')
+        self.workshop=Location.objects.create(name='WARSZTAT', phone_number='133456789', email="test2@gmail.com", city=self.city,
+            street_name='Parkowa',
+            building_number=1, location_type='W')
+        UserLocationAssignment.objects.create(user=self.standard1, location=self.branch)
+        UserLocationAssignment.objects.create(user=self.standard2, location=self.branch)
+        UserLocationAssignment.objects.create(user=self.mechanic1, location=self.workshop)
+        UserLocationAssignment.objects.create(user=self.mechanic2, location=self.workshop)
+        self.fresh_account = User.objects.create_user(first_name="Sebastian", last_name="Wrobel", username="sebwro",
+                                                 email="durango@gmail.com", password="dihwdhqwdhqhiuhdqwdwqiuhqwd13123",
+                                                 role="standard", phone_number="313731377", is_active=False)
+
+    def test_superuser_can_retrieve_own_account_with_additional_fields(self):
+
+        client=APIClient()
+        client.force_authenticate(self.superuser)
+        response=client.get(reverse('user-profile'))
+        self.assertEqual(response.status_code,status.HTTP_200_OK)
+        self.assertEqual(response.json()['username'],self.superuser.username)
+        self.assertEqual(response.json()['is_active'],self.superuser.is_active)
+
+
+    def test_non_standard_or_mechanic_user_can_retrieve_own_account_without_location_field(self):
+
+        client=APIClient()
+        client.force_authenticate(self.manager)
+        response=client.get(reverse('user-profile'))
+        self.assertEqual(response.status_code,status.HTTP_200_OK)
+        self.assertEqual(response.json()['id'],str(self.manager.pk))
+        self.assertEqual(response.json().get('user_location_assignment',None),None)
+
+    def test_assigned_user_can_retrieve_own_account_with_location_field(self):
+
+        client=APIClient()
+        client.force_authenticate(self.standard1)
+        response=client.get(reverse('user-profile'))
+        self.assertEqual(response.status_code,status.HTTP_200_OK)
+        self.assertEqual(response.json()['id'],str(self.standard1.pk))
+        self.assertEqual(response.json()['user_location_assignment']['location']['name'],'SIEDZIBA')
+
+    def test_unassigned_standard_can_retrieve_own_account_with_empty_location_field(self):
+        client=APIClient()
+        client.force_authenticate(self.standard3)
+        response=client.get(reverse('user-profile'))
+        self.assertEqual(response.status_code,status.HTTP_200_OK)
+        self.assertEqual(response.json()['id'],str(self.standard3.pk))
+        self.assertEqual(response.json()['user_location_assignment'],None)
+
+    def test_standard_user_can_list_branch_coworkers_only(self):
+        user=User.objects.get(username="jannow1111")
+        client = APIClient()
+        client.force_authenticate(user)
+        response=client.get(reverse('user-list'))
+        assert response.status_code==status.HTTP_200_OK
+        users=response.json()
+        assert len(users)==2
+        self.assertTrue(all(user['first_name'] in ('Jan','Krzysztof') for user in users))
+
+    def test_mechanic_can_list_branch_coworkers_only(self):
+        user=User.objects.get(username="karnaw1111")
+        client = APIClient()
+        client.force_authenticate(user)
+        response=client.get(reverse('user-list'))
+        assert response.status_code==status.HTTP_200_OK
+        users=response.json()
+        assert len(users)==2
+        self.assertTrue(all(user['first_name'] in ('Karol','Jimmy') for user in users))
+
+    def test_manager_can_list_standards_and_mechanics_and_managers_only(self):
+        user=User.objects.get(username="szycha1111")
+        client = APIClient()
+        client.force_authenticate(user)
+        response=client.get(reverse('user-list'))
+        assert response.status_code==status.HTTP_200_OK
+        users=response.json()
+        assert len(users)==8
+
+    def test_admin_can_list_all_users_without_superuser(self):
+        user = User.objects.get(username="piotes1111")
+        client = APIClient()
+        client.force_authenticate(user)
+        response = client.get(reverse('user-list'))
+        assert response.status_code == status.HTTP_200_OK
+        users = response.json()
+        assert len(users) == 10
+        self.assertTrue(all(user['first_name']!='Grzegorz' for user in users))
+
+    def test_superuser_can_list_all_users(self):
+        user = User.objects.get(username="grzkow1111")
+        client = APIClient()
+        client.force_authenticate(user)
+        response = client.get(reverse('user-list'))
+        assert response.status_code == status.HTTP_200_OK
+        users = response.json()
+        assert len(users) == 11
+
+    def test_not_admin_users_cannot_create_users(self):
+        standard=User.objects.get(username="jannow1111")
+        mechanic=User.objects.get(username="karnaw1111")
+        manager=User.objects.get(username="szycha1111")
+
+        client = APIClient()
+        client.force_authenticate(standard)
+        response = client.post(reverse('user-list'),data={
+            "first_name": "Jakub",
+            "last_name": "Tackowski",
+            "email":"delivered@resend.dev",
+            "phone_number":"628327263",
+            "role":"mechanic"
+        })
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+        client = APIClient()
+        client.force_authenticate(mechanic)
+        response = client.post(reverse('user-list'), data={
+            "first_name": "Jakub",
+            "last_name": "Tackowski",
+            "email": "delivered@resend.dev",
+            "phone_number": "628327263",
+            "role": "mechanic"
+        })
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+        client = APIClient()
+        client.force_authenticate(manager)
+        response = client.post(reverse('user-list'), data={
+            "first_name": "Jakub",
+            "last_name": "Tackowski",
+            "email": "delivered@resend.dev",
+            "phone_number": "628327263",
+            "role": "mechanic"
+        })
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_admin_can_create_standard(self):
+        user = User.objects.get(username="piotes1111")
+        client = APIClient()
+        client.force_authenticate(user)
+        response = client.post(reverse('user-list'), data={
+            "first_name": "Jakub",
+            "last_name": "Tackowski-Ratajski",
+            "email": "delivered@resend.dev",
+            "phone_number": "628327263",
+            "role": "standard"
+        })
+        assert response.status_code == status.HTTP_201_CREATED
+        created_account=User.objects.get(first_name="Jakub")
+        assert created_account.role=="standard" and created_account.is_active==False
+        self.assertEqual(len(mail.outbox), 1)
+
+    def test_admin_can_create_mechanic(self):
+        user = User.objects.get(username="piotes1111")
+        client = APIClient()
+        client.force_authenticate(user)
+        response = client.post(reverse('user-list'), data={
+            "first_name": "Jakub",
+            "last_name": "Poziomka",
+            "email": "delivered@resend.dev",
+            "phone_number": "628327263",
+            "role": "mechanic"
+        })
+        self.assertEqual(response.status_code,status.HTTP_201_CREATED)
+        created_account=User.objects.get(first_name="Jakub")
+        self.assertEqual(created_account.role,'mechanic')
+        self.assertEqual(created_account.is_active, False)
+        assert created_account.role=="mechanic" and created_account.is_active==False
+        self.assertEqual(len(mail.outbox), 1)
+
+    def test_admin_can_create_manager(self):
+        user = User.objects.get(username="piotes1111")
+        client = APIClient()
+        client.force_authenticate(user)
+        response = client.post(reverse('user-list'), data={
+            "first_name": "Jakub",
+            "last_name": "Tackowski",
+            "email": "delivered@resend.dev",
+            "phone_number": "628327263",
+            "role": "manager"
+        })
+        assert response.status_code == status.HTTP_201_CREATED
+        created_account=User.objects.get(first_name="Jakub")
+        assert created_account.role=="manager" and created_account.is_active==False
+        self.assertEqual(len(mail.outbox), 1)
+
+    def test_admin_cannot_create_admin(self):
+        user = User.objects.get(username="piotes1111")
+        client = APIClient()
+        client.force_authenticate(user)
+        response = client.post(reverse('user-list'), data={
+            "first_name": "Jakub",
+            "last_name": "Tackowski",
+            "email": "delivered@resend.dev",
+            "phone_number": "628327263",
+            "role": "admin"
+        })
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_superuser_can_create_admin(self):
+        user = User.objects.get(username="grzkow1111")
+        client = APIClient()
+        client.force_authenticate(user)
+        response = client.post(reverse('user-list'), data={
+            "first_name": "Jakub",
+            "last_name": "Tackowski",
+            "email": "vaworo8022@7tul.com",
+            "phone_number": "628327263",
+            "role": "admin"
+        })
+        assert response.status_code == status.HTTP_201_CREATED
+        created_account = User.objects.get(first_name="Jakub")
+        assert created_account.role == "admin" and created_account.is_active == False
+        self.assertEqual(len(mail.outbox), 1)
+
+    def test_standard_can_retrieve_own_account_and_branch_coworkers(self):
+        user=User.objects.get(username="jannow1111")
+        client=APIClient()
+        client.force_authenticate(user)
+        response=client.get(reverse('user-detail',kwargs={'pk':user.pk}))
+        assert response.status_code==status.HTTP_200_OK
+        assert response.json()['id']==str(user.id)
+        user2=User.objects.get(username="krzpaw1111")
+        response=client.get(reverse('user-detail',kwargs={'pk':user2.pk}))
+        assert response.status_code==status.HTTP_200_OK
+        assert response.json()['id']==str(user2.id)
+
+    def test_standard_cannot_retrieve_unrelated_users(self):
+        user = User.objects.get(username="jannow1111")
+        client = APIClient()
+        client.force_authenticate(user)
+        standard3=User.objects.get(username="kamgro1111")
+        mechanic=User.objects.get(username="jimmcg1111")
+        manager=User.objects.get(username="szycha1111")
+        admin=User.objects.get(username="piotes1111")
+        superuser=User.objects.get(username="grzkow1111")
+        response = client.get(reverse('user-detail', kwargs={'pk': standard3.pk}))
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        response = client.get(reverse('user-detail', kwargs={'pk': mechanic.pk}))
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        response = client.get(reverse('user-detail', kwargs={'pk': manager.pk}))
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        response = client.get(reverse('user-detail', kwargs={'pk': admin.pk}))
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        response = client.get(reverse('user-detail', kwargs={'pk': superuser.pk}))
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_mechanic_can_retrieve_own_account_and_workshop_coworkers(self):
+        user=User.objects.get(username="karnaw1111")
+        client=APIClient()
+        client.force_authenticate(user)
+        response=client.get(reverse('user-detail',kwargs={'pk':user.pk}))
+        assert response.status_code==status.HTTP_200_OK
+        assert response.json()['id']==str(user.id)
+        user2=User.objects.get(username="jimmcg1111")
+        response=client.get(reverse('user-detail',kwargs={'pk':user2.pk}))
+        assert response.status_code==status.HTTP_200_OK
+        assert response.json()['id']==str(user2.id)
+
+    def test_mechanic_cannot_retrieve_unrelated_users(self):
+        user = User.objects.get(username="karnaw1111")
+        client = APIClient()
+        client.force_authenticate(user)
+        standard=User.objects.get(username="jannow1111")
+        mechanic3=User.objects.get(username="lalsal1111")
+        manager=User.objects.get(username="szycha1111")
+        admin=User.objects.get(username="piotes1111")
+        superuser=User.objects.get(username="grzkow1111")
+        response = client.get(reverse('user-detail', kwargs={'pk': standard.pk}))
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        response = client.get(reverse('user-detail', kwargs={'pk': mechanic3.pk}))
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        response = client.get(reverse('user-detail', kwargs={'pk': manager.pk}))
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        response = client.get(reverse('user-detail', kwargs={'pk': admin.pk}))
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        response = client.get(reverse('user-detail', kwargs={'pk': superuser.pk}))
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_manager_can_retrieve_own_account_and_standards_and_mechanics(self):
+        user=User.objects.get(username="szycha1111")
+        client=APIClient()
+        client.force_authenticate(user)
+        response=client.get(reverse('user-detail',kwargs={'pk':user.pk}))
+        assert response.status_code==status.HTTP_200_OK
+        assert response.json()['id']==str(user.id)
+        standard=User.objects.get(username="kamgro1111")
+        response=client.get(reverse('user-detail',kwargs={'pk':standard.pk}))
+        assert response.status_code==status.HTTP_200_OK
+        assert response.json()['id'] == str(standard.id)
+        mechanic=User.objects.get(username="jimmcg1111")
+        response=client.get(reverse('user-detail',kwargs={'pk':mechanic.pk}))
+        assert response.status_code==status.HTTP_200_OK
+        assert response.json()['id'] == str(mechanic.id)
+
+    def test_admin_can_retrieve_all_users_without_superuser(self):
+        user = User.objects.get(username="piotes1111")
+        standard = User.objects.get(username="jannow1111")
+        mechanic = User.objects.get(username="karnaw1111")
+        manager = User.objects.get(username="szycha1111")
+        admin=User.objects.get(username="albent1111")
+        client = APIClient()
+        client.force_authenticate(user)
+        response = client.get(reverse('user-detail', kwargs={'pk': user.pk}))
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json()['id'] == str(user.id)
+        response = client.get(reverse('user-detail', kwargs={'pk': standard.pk}))
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json()['id'] == str(standard.id)
+        response = client.get(reverse('user-detail', kwargs={'pk': mechanic.pk}))
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json()['id'] == str(mechanic.id)
+        response = client.get(reverse('user-detail', kwargs={'pk': admin.pk}))
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json()['id'] == str(admin.id)
+        response = client.get(reverse('user-detail', kwargs={'pk': manager.pk}))
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json()['id'] == str(manager.id)
+
+    def test_admin_cannot_retrieve_superuser(self):
+        user = User.objects.get(username="piotes1111")
+        client = APIClient()
+        client.force_authenticate(user)
+        superuser=User.objects.get(username="grzkow1111")
+        response = client.get(reverse('user-detail', kwargs={'pk': superuser.pk}))
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_superuser_can_retrieve_all_users(self):
+        user = User.objects.get(username="grzkow1111")
+        standard = User.objects.get(username="jannow1111")
+        mechanic = User.objects.get(username="karnaw1111")
+        manager = User.objects.get(username="szycha1111")
+        admin=User.objects.get(username="albent1111")
+        client = APIClient()
+        client.force_authenticate(user)
+        response = client.get(reverse('user-detail', kwargs={'pk': user.pk}))
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json()['username'] == user.username
+        response = client.get(reverse('user-detail', kwargs={'pk': standard.pk}))
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json()['username'] == standard.username
+        response = client.get(reverse('user-detail', kwargs={'pk': mechanic.pk}))
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json()['username'] == mechanic.username
+        response = client.get(reverse('user-detail', kwargs={'pk': admin.pk}))
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json()['username'] == admin.username
+        response = client.get(reverse('user-detail', kwargs={'pk': manager.pk}))
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json()['username'] == manager.username
+
+    def test_not_admin_users_cannot_update_users(self):
+        standard=User.objects.get(username="jannow1111")
+        mechanic=User.objects.get(username="karnaw1111")
+        manager=User.objects.get(username="szycha1111")
+        target=User.objects.get(username="krzpaw1111")
+        client=APIClient()
+        client.force_authenticate(standard)
+        response=client.patch(reverse('user-detail',kwargs={'pk': target.pk}),data={'phone_number':321321321})
+        assert response.status_code==status.HTTP_403_FORBIDDEN
+        client=APIClient()
+        client.force_authenticate(mechanic)
+        response=client.patch(reverse('user-detail',kwargs={'pk': target.pk}),data={'phone_number':321321321})
+        assert response.status_code==status.HTTP_403_FORBIDDEN
+        client=APIClient()
+        client.force_authenticate(manager)
+        response=client.patch(reverse('user-detail',kwargs={'pk': target.pk}),data={'phone_number':321321321})
+        assert response.status_code==status.HTTP_403_FORBIDDEN
+
+    def test_admin_can_update_lower_role_users_personal_data_field(self):
+        user=User.objects.get(username="piotes1111")
+        standard=User.objects.get(username="jannow1111")
+        mechanic=User.objects.get(username="karnaw1111")
+        manager=User.objects.get(username="szycha1111")
+        client=APIClient()
+        client.force_authenticate(user)
+        response=client.patch(reverse('user-detail',kwargs={'pk': standard.pk}),data={'phone_number':321321321})
+        assert response.status_code==status.HTTP_200_OK
+        standard = User.objects.get(username="jannow1111")
+        assert "321321321"==str(standard.phone_number)
+        response=client.patch(reverse('user-detail',kwargs={'pk': mechanic.pk}),data={'phone_number':321321322})
+        assert response.status_code == status.HTTP_200_OK
+        mechanic = User.objects.get(username="karnaw1111")
+        assert "321321322" == str(mechanic.phone_number)
+        response=client.patch(reverse('user-detail',kwargs={'pk': manager.pk}),data={'phone_number':321321323})
+        assert response.status_code == status.HTTP_200_OK
+        manager = User.objects.get(username="szycha1111")
+        assert "321321323" == str(manager.phone_number)
+
+    def test_admin_can_update_standard_and_mechanic_role_when_unassigned(self):
+        user=User.objects.get(username="piotes1111")
+        standard=User.objects.get(username="kamgro1111")
+        mechanic=User.objects.get(username="lalsal1111")
+        client=APIClient()
+        client.force_authenticate(user)
+        response=client.patch(reverse('user-detail',kwargs={'pk': standard.pk}),data={'role':'manager'})
+        assert response.status_code==status.HTTP_200_OK
+        old_standard=User.objects.get(username="kamgro1111")
+        assert old_standard.role=="manager"
+        response=client.patch(reverse('user-detail',kwargs={'pk': mechanic.pk}),data={'role':'manager'})
+        assert response.status_code==status.HTTP_200_OK
+        old_mechanic=User.objects.get(username="lalsal1111")
+        assert old_mechanic.role=="manager"
+
+    def test_admin_cannot_update_standard_and_mechanic_role_when_assigned(self):
+        user=User.objects.get(username="piotes1111")
+        standard=User.objects.get(username="jannow1111")
+        mechanic=User.objects.get(username="karnaw1111")
+        client=APIClient()
+        client.force_authenticate(user)
+        response=client.patch(reverse('user-detail',kwargs={'pk': standard.pk}),data={'role':'manager'})
+        assert response.status_code==status.HTTP_400_BAD_REQUEST
+        response=client.patch(reverse('user-detail',kwargs={'pk': mechanic.pk}),data={'role':'manager'})
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_admin_can_update_manager_role(self):
+        user = User.objects.get(username="piotes1111")
+        manager=User.objects.get(username="szycha1111")
+        client = APIClient()
+        client.force_authenticate(user)
+        response = client.patch(reverse('user-detail', kwargs={'pk': manager.pk}), data={'role': 'standard'})
+        assert response.status_code == status.HTTP_200_OK
+        manager = User.objects.get(username="szycha1111")
+        assert manager.role == "standard"
+
+    def test_admin_cannot_update_admin_user(self):
+        user = User.objects.get(username="piotes1111")
+        admin=User.objects.get(username="albent1111")
+        client = APIClient()
+        client.force_authenticate(user)
+        response = client.patch(reverse('user-detail', kwargs={'pk': admin.pk}), data={'first_name': 'Chuck'})
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_admin_cannot_update_non_existent_user(self):
+        client = APIClient()
+        client.force_authenticate(self.admin1)
+        response = client.patch(reverse('user-detail', kwargs={'pk': 'b54d7467-2eaa-4e1b-8be2-3fb091d7639e'}), data={'first_name': 'Chuck'})
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_admin_cannot_enumerate_superuser(self):
+        client = APIClient()
+        client.force_authenticate(self.admin1)
+        response = client.patch(reverse('user-detail', kwargs={'pk': 'b54d7467-2eaa-4e1b-8be2-3fb091d7639e'}), data={'first_name': 'Chuck'})
+        response2 = client.patch(reverse('user-detail', kwargs={'pk': self.superuser.pk}), data={'first_name': 'Chuck'})
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(response2.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(str(response.data), str(response2.data))
+
+    def test_manager_cannot_update_admin_user(self):
+        client = APIClient()
+        client.force_authenticate(self.manager)
+        response = client.patch(reverse('user-detail', kwargs={'pk': self.admin1.pk}), data={'first_name': 'Chuck'})
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_admin_cannot_promote_user_to_admin(self):
+        user = User.objects.get(username="piotes1111")
+        standard=User.objects.get(username="kamgro1111")
+        client = APIClient()
+        client.force_authenticate(user)
+        response = client.patch(reverse('user-detail', kwargs={'pk': standard.pk}), data={'role': 'admin'})
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_superuser_cannot_demote_admin_user(self):
+        user = User.objects.get(username="grzkow1111")
+        admin=User.objects.get(username="albent1111")
+        client = APIClient()
+        client.force_authenticate(user)
+        response = client.patch(reverse('user-detail', kwargs={'pk': admin.pk}), data={'role': 'standard'})
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_superuser_can_update_admin_user(self):
+        user = User.objects.get(username="grzkow1111")
+        admin=User.objects.get(username="albent1111")
+        client = APIClient()
+        client.force_authenticate(user)
+        response = client.patch(reverse('user-detail', kwargs={'pk': admin.pk}), data={'first_name': 'Chuck'})
+        assert response.status_code == status.HTTP_200_OK
+        admin_updated=User.objects.get(id=admin.id)
+        assert admin_updated.first_name=="Chuck"
+
+    def test_non_admin_users_cannot_delete_users(self):
+        standard=User.objects.get(username="jannow1111")
+        mechanic=User.objects.get(username="karnaw1111")
+        manager=User.objects.get(username="szycha1111")
+        target=User.objects.get(username="krzpaw1111")
+        client=APIClient()
+        client.force_authenticate(standard)
+        response=client.delete(reverse('user-detail',kwargs={'pk': target.pk}))
+        assert response.status_code==status.HTTP_403_FORBIDDEN
+        client=APIClient()
+        client.force_authenticate(mechanic)
+        response=client.delete(reverse('user-detail',kwargs={'pk': target.pk}))
+        assert response.status_code==status.HTTP_403_FORBIDDEN
+        client=APIClient()
+        client.force_authenticate(manager)
+        response=client.delete(reverse('user-detail',kwargs={'pk': target.pk}))
+        assert response.status_code==status.HTTP_403_FORBIDDEN
+
+    def test_admin_can_delete_lower_role_users(self):
+        user=User.objects.get(username="piotes1111")
+        standard=User.objects.get(username="jannow1111")
+        mechanic=User.objects.get(username="karnaw1111")
+        manager=User.objects.get(username="szycha1111")
+        client=APIClient()
+        client.force_authenticate(user)
+        response=client.delete(reverse('user-detail',kwargs={'pk': standard.pk}))
+        assert response.status_code==status.HTTP_204_NO_CONTENT
+        assert User.objects.filter(username="jannow1111").exists()==False
+        response=client.delete(reverse('user-detail',kwargs={'pk': mechanic.pk}))
+        assert response.status_code==status.HTTP_204_NO_CONTENT
+        assert User.objects.filter(username="karnaw1111").exists()==False
+        response=client.delete(reverse('user-detail',kwargs={'pk': manager.pk}))
+        assert response.status_code==status.HTTP_204_NO_CONTENT
+        assert User.objects.filter(username="szycha1111").exists()==False
+
+    def test_admin_cannot_delete_admin_user(self):
+        user=User.objects.get(username="piotes1111")
+        admin=User.objects.get(username="albent1111")
+        client=APIClient()
+        client.force_authenticate(user)
+        response=client.delete(reverse('user-detail',kwargs={'pk': admin.pk}))
+        assert response.status_code==status.HTTP_403_FORBIDDEN
+
+    def test_superuser_can_delete_admin_user(self):
+        user=User.objects.get(username="grzkow1111")
+        admin=User.objects.get(username="albent1111")
+        client=APIClient()
+        client.force_authenticate(user)
+        response=client.delete(reverse('user-detail',kwargs={'pk': admin.pk}))
+        assert response.status_code==status.HTTP_204_NO_CONTENT
+        assert User.objects.filter(username="albent1111").exists()==False
+
+    def test_user_can_change_his_password(self):
+        client=APIClient()
+        client.force_authenticate(self.standard1)
+        response=client.post(reverse('user-password-change'),data={'old_password':'test123456789','new_password':'Kaliniak1234562134','confirm_password':'Kaliniak1234562134'})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        user=authenticate(username=self.standard1.username, password='Kaliniak1234562134')
+        self.assertEqual(user,self.standard1)
+
+    def test_user_cannot_set_the_same_password_during_change(self):
+        client = APIClient()
+        client.force_authenticate(self.standard3)
+        response = client.post(reverse('user-password-change'),
+                               data={'old_password': 'Wykopanyziemniak21', 'new_password': 'Wykopanyziemniak21',
+                                     'confirm_password': 'Wykopanyziemniak21'})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('This password is already used.',str(response.json()))
+
+    def test_user_cannot_change_password_for_too_short_password(self):
+        client=APIClient()
+        client.force_authenticate(self.standard1)
+        response = client.post(reverse('user-password-change'),data={'old_password': 'test123456789', 'new_password': 'test123', 'confirm_password':'test123'})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('This password is too short.',str(response.json()))
+
+    def test_user_cannot_change_password_for_common_password(self):
+        client=APIClient()
+        client.force_authenticate(self.standard1)
+        response = client.post(reverse('user-password-change'),data={'old_password': 'test123456789', 'new_password': 'password12345', 'confirm_password':'password12345'})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('This password is too common.',str(response.json()))
+
+    def test_user_cannot_change_password_for_numeric_password(self):
+        client=APIClient()
+        client.force_authenticate(self.standard1)
+        response = client.post(reverse('user-password-change'),data={'old_password': 'test123456789', 'new_password': '123456789123', 'confirm_password':'123456789123'})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('This password is entirely numeric.',str(response.json()))
+
+    def test_user_cannot_change_password_for_too_long_password(self):
+        client=APIClient()
+        client.force_authenticate(self.standard1)
+        response = client.post(reverse('user-password-change'),data={'old_password': 'test123456789', 'new_password': '123-rZRn}ZPh(dYi)i7qpQcv&*FD-veL,M{{[DvjPRkrKV}TvQkra)}/-EYbSN#eH_iKCb:V%!+2ACyPj}0FqvWxihr(y(m8+vEmq}r5XTvtU.L8WG.7B/6CMeE=A[{gf7t:f,)pv}}kDrzx!hbXh+zbpaY%.w2Hn!K[&-@{eG}GwzP(Rk16P_.RHZ}7hjU{e]y@$Vv61D_m!bHN5d*#b+%@AAk0Ujr9FR2{{#q3/3PYhQS1d/3$EM:g&75RxZ6!W,', 'confirm_password':'123-rZRn}ZPh(dYi)i7qpQcv&*FD-veL,M{{[DvjPRkrKV}TvQkra)}/-EYbSN#eH_iKCb:V%!+2ACyPj}0FqvWxihr(y(m8+vEmq}r5XTvtU.L8WG.7B/6CMeE=A[{gf7t:f,)pv}}kDrzx!hbXh+zbpaY%.w2Hn!K[&-@{eG}GwzP(Rk16P_.RHZ}7hjU{e]y@$Vv61D_m!bHN5d*#b+%@AAk0Ujr9FR2{{#q3/3PYhQS1d/3$EM:g&75RxZ6!W,'})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('Ensure this field has no more than 256 characters.',str(response.json()))
+
+    def test_user_can_reset_his_password(self):
+        client = APIClient()
+        response = client.post(reverse('user-reset-password'), data={'user': self.standard1.id,
+                                                                 'token': default_token_generator.make_token(
+                                                                     self.standard1), 'password': 'Paliniak3333332134',
+                                                                 'confirm_password': 'Paliniak3333332134'})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        user = authenticate(username=self.standard1.username, password='Paliniak3333332134')
+        self.assertEqual(user, User.objects.get(pk=self.standard1.pk))
+
+    def test_user_cannot_reset_password_without_proper_token(self):
+        client = APIClient()
+        response = client.post(reverse('user-reset-password'), data={'user': self.standard1.id,
+                                                                 'token': default_token_generator.make_token(
+                                                                     self.standard2), 'password': 'test1234567892134',
+                                                                 'confirm_password': 'test1234567892134'})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('Invalid user or token.', str(response.json()))
+
+    def test_user_cannot_reset_password_for_too_short_password(self):
+        client = APIClient()
+        response = client.post(reverse('user-reset-password'), data={'user': self.standard1.id,
+                                                                 'token': default_token_generator.make_token(
+                                                                     self.standard1), 'password': 'test123',
+                                                                 'confirm_password': 'test123'})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('This password is too short.', str(response.json()))
+
+    def test_user_cannot_reset_password_for_common_password(self):
+
+        client = APIClient()
+        response = client.post(reverse('user-reset-password'), data={'user': self.standard1.id,
+                                                                 'token': default_token_generator.make_token(
+                                                                     self.standard1), 'password': 'password12345',
+                                                                 'confirm_password': 'password12345'})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('This password is too common.', str(response.json()))
+
+    def test_user_cannot_reset_password_for_numeric_password(self):
+
+        client = APIClient()
+        response = client.post(reverse('user-reset-password'), data={'user': self.standard1.id,
+                                                                 'token': default_token_generator.make_token(
+                                                                     self.standard1), 'password': '123456789123',
+                                                                 'confirm_password': '123456789123'})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('This password is entirely numeric.', str(response.json()))
+
+    def test_user_cannot_reset_password_for_too_long_password(self):
+
+        client = APIClient()
+        response = client.post(reverse('user-reset-password'), data={'user': self.standard1.id,
+                                                                 'token': default_token_generator.make_token(
+                                                                     self.standard1), 'password': '123-rZRn}ZPh(dYi)i7qpQcv&*FD-veL,M{{[DvjPRkrKV}TvQkra)}/-EYbSN#eH_iKCb:V%!+2ACyPj}0FqvWxihr(y(m8+vEmq}r5XTvtU.L8WG.7B/6CMeE=A[{gf7t:f,)pv}}kDrzx!hbXh+zbpaY%.w2Hn!K[&-@{eG}GwzP(Rk16P_.RHZ}7hjU{e]y@$Vv61D_m!bHN5d*#b+%@AAk0Ujr9FR2{{#q3/3PYhQS1d/3$EM:g&75RxZ6!W,',
+                                                                 'confirm_password': '123-rZRn}ZPh(dYi)i7qpQcv&*FD-veL,M{{[DvjPRkrKV}TvQkra)}/-EYbSN#eH_iKCb:V%!+2ACyPj}0FqvWxihr(y(m8+vEmq}r5XTvtU.L8WG.7B/6CMeE=A[{gf7t:f,)pv}}kDrzx!hbXh+zbpaY%.w2Hn!K[&-@{eG}GwzP(Rk16P_.RHZ}7hjU{e]y@$Vv61D_m!bHN5d*#b+%@AAk0Ujr9FR2{{#q3/3PYhQS1d/3$EM:g&75RxZ6!W,'})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('Ensure this field has no more than 256 characters.', str(response.json()))
+
+    def test_user_cannot_reset_password_with_different_password_fields(self):
+        client = APIClient()
+        response = client.post(reverse('user-reset-password'), data={'user': self.standard1.id,
+                                                                 'token': default_token_generator.make_token(
+                                                                     self.standard1), 'password': 'Kaliniak1234562134',
+                                                                 'confirm_password': 'Kaliniak6543212134'})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('Passwords do not match.', str(response.json()))
+
+    def test_user_can_activate_his_account(self):
+
+        client=APIClient()
+        response=client.post(reverse('user-activation'),data={'user':self.fresh_account.id, 'token':default_token_generator.make_token(self.fresh_account),'password':'Kaliniak1234562134','confirm_password':'Kaliniak1234562134'})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        user=authenticate(username=self.fresh_account.username, password='Kaliniak1234562134')
+        self.assertEqual(user, User.objects.get(pk=self.fresh_account.pk))
+
+    def test_user_cannot_activate_his_account_without_proper_token(self):
+
+        client = APIClient()
+        response = client.post(reverse('user-activation'), data={'user': self.fresh_account.id,'token': default_token_generator.make_token(self.standard1), 'password': 'Kaliniak123456','confirm_password': 'Kaliniak123456'})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('Invalid user or token.',str(response.json()))
+
+    def test_user_cannot_activate_his_account_with_too_short_password(self):
+
+        client = APIClient()
+        response = client.post(reverse('user-activation'), data={'user': self.fresh_account.id,
+                                                                 'token': default_token_generator.make_token(
+                                                                     self.fresh_account), 'password': 'test123',
+                                                                 'confirm_password': 'test123'})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('This password is too short.', str(response.json()))
+
+    def test_user_cannot_activate_his_account_with_common_password(self):
+
+        client = APIClient()
+        response = client.post(reverse('user-activation'), data={'user': self.fresh_account.id,
+                                                                 'token': default_token_generator.make_token(
+                                                                     self.fresh_account), 'password': 'password12345',
+                                                                 'confirm_password': 'password12345'})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('This password is too common.', str(response.json()))
+
+    def test_user_cannot_activate_his_account_with_numeric_password(self):
+
+        client = APIClient()
+        response = client.post(reverse('user-activation'), data={'user': self.fresh_account.id,
+                                                                 'token': default_token_generator.make_token(
+                                                                     self.fresh_account), 'password': '123456789123',
+                                                                 'confirm_password': '123456789123'})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('This password is entirely numeric.', str(response.json()))
+
+    def test_user_cannot_activate_his_account_with_too_long_password(self):
+
+        client = APIClient()
+        response = client.post(reverse('user-activation'), data={'user': self.fresh_account.id,
+                                                                 'token': default_token_generator.make_token(
+                                                                     self.fresh_account), 'password': '123-rZRn}ZPh(dYi)i7qpQcv&*FD-veL,M{{[DvjPRkrKV}TvQkra)}/-EYbSN#eH_iKCb:V%!+2ACyPj}0FqvWxihr(y(m8+vEmq}r5XTvtU.L8WG.7B/6CMeE=A[{gf7t:f,)pv}}kDrzx!hbXh+zbpaY%.w2Hn!K[&-@{eG}GwzP(Rk16P_.RHZ}7hjU{e]y@$Vv61D_m!bHN5d*#b+%@AAk0Ujr9FR2{{#q3/3PYhQS1d/3$EM:g&75RxZ6!W,',
+                                                                 'confirm_password': '123-rZRn}ZPh(dYi)i7qpQcv&*FD-veL,M{{[DvjPRkrKV}TvQkra)}/-EYbSN#eH_iKCb:V%!+2ACyPj}0FqvWxihr(y(m8+vEmq}r5XTvtU.L8WG.7B/6CMeE=A[{gf7t:f,)pv}}kDrzx!hbXh+zbpaY%.w2Hn!K[&-@{eG}GwzP(Rk16P_.RHZ}7hjU{e]y@$Vv61D_m!bHN5d*#b+%@AAk0Ujr9FR2{{#q3/3PYhQS1d/3$EM:g&75RxZ6!W,'})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('Ensure this field has no more than 256 characters.', str(response.json()))
+
+    def test_user_cannot_activate_his_account_with_different_password_fields(self):
+        client = APIClient()
+        response = client.post(reverse('user-activation'), data={'user': self.fresh_account.id,
+                                                                 'token': default_token_generator.make_token(
+                                                                     self.fresh_account), 'password': 'Kaliniak123456',
+                                                                 'confirm_password': 'Kaliniak654321'})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('Passwords do not match.', str(response.json()))
+
+
+    def test_admin_can_set_inactive_account(self):
+        client = APIClient()
+        client.force_authenticate(self.admin1)
+        response=client.post(reverse('user-status',kwargs={'pk':str(self.standard1.pk)}),data={
+            'status':'inactive'
+        })
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('User has been deactivated',str(response.json()))
+        self.assertEqual(User.objects.get(pk=self.standard1.pk).is_active, False)
+
+    def test_admin_can_set_active_account(self):
+        self.standard1.is_active=False
+        self.standard1.save()
+        client = APIClient()
+        client.force_authenticate(self.admin1)
+        response = client.post(reverse('user-status',kwargs={'pk':str(self.standard1.pk)}),data={
+            'status':'active'
+        })
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('User has been activated',str(response.json()))
+        self.assertEqual(User.objects.get(pk=self.standard1.pk).is_active, True)
+
+    def test_admin_cannot_set_active_fresh_account(self):
+        client = APIClient()
+        client.force_authenticate(self.admin1)
+        response=client.post(reverse('user-status',kwargs={'pk':str(self.fresh_account.pk)}),data={
+            'status':'active'
+        })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('This account is yet to be activated by account owner',str(response.json()))
+
+    def test_admin_cannot_set_inactive_inactive_account(self):
+        self.standard1.is_active = False
+        self.standard1.save()
+        client = APIClient()
+        client.force_authenticate(self.admin1)
+        response=client.post(reverse('user-status',kwargs={'pk':str(self.standard1.pk)}),data={
+            'status':'inactive'
+        })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('User is already inactive.',str(response.json()))
+
+    def test_admin_cannot_set_inactive_other_admin(self):
+        client = APIClient()
+        client.force_authenticate(self.admin1)
+        response=client.post(reverse('user-status',kwargs={'pk':str(self.admin2.pk)}),data={
+            'status':'inactive'
+        })
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertIn('You do not have permission to perform this action.',str(response.json()))
