@@ -96,8 +96,7 @@ class ManufacturerRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPI
         return super().get_permissions()
 
 
-#dodawać, usuwać oraz modyfikować lokalizacje może administrator
-#wypisywać wszystkie lokalizacje mogą wszyscy
+
 class LocationListCreateAPIView(generics.ListCreateAPIView):
     queryset = Location.objects.all()
     http_method_names = ['head', 'get', 'post']
@@ -146,8 +145,6 @@ class UserLocationAPIView(APIView):
             return Response(serializer.data, status=status.HTTP_200_OK)
 
 #ten widok umożliwia wypisywanie i tworzenie pojazdów przez menadżera oraz administratora
-#za pomocą odpowiednich query setów muszę zaimplementować wypisywanie pojazdów z siedziby standarda
-#a także wypisywanie pojazdów przez mechanika, dla których istnieje powiązanie FailureReport z jego warsztatem
 class VehicleListCreateAPIView(generics.ListCreateAPIView):
     queryset = Vehicle.objects.all()
     serializer_class = VehicleListSerializer
@@ -546,7 +543,7 @@ class RepairReportListAPIView(generics.ListAPIView):
     permission_classes = [IsManager | IsAdmin]
     filter_backends = (external_filters.DjangoFilterBackend,)
     filterset_class = RepairReportFilter
-#TODO: ten querysecik do pracy jako przykład
+
     def get_queryset(self):
         qs=super().get_queryset()
         if self.request.user.role=='manager':

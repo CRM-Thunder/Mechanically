@@ -6,9 +6,9 @@ updates:
       interval: "daily"
     open-pull-requests-limit: 10
     commit-message:
-      prefix: "fix-dependencies"
+      prefix: "dependabot-scan"
     labels:
-      - "dependencies"
+      - "dependabot"
 
   - package-ecosystem: "github-actions"
     directory: "/"

@@ -1,6 +1,6 @@
 from django.core.mail import send_mail
 from django.conf import settings
-#w mailu jest odnośnik do nieistniejącego frontendu, z poziomu którego wychodziłby request POST do API
+#w mailu jest odnośnik do hipotetycznego frontendu, z poziomu którego wychodziłby request POST do API
 def send_activation_email(user, token):
     uuid = str(user.pk)
 

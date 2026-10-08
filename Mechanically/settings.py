@@ -88,13 +88,13 @@ DATABASES = {
         'HOST': env('DB_HOST'),
         'PORT': env('DB_PORT'),
         'CONN_MAX_AGE': 600,
-        #'OPTIONS':{
-        #    'ssl':{
-        #        'ca': env('CA_CERT'),
-        #        'cert': env('CERT'),
-        #        'key': env('KEY')
-        #    }
-        #}
+        'OPTIONS':{
+            'ssl':{
+                'ca': env('CA_CERT'),
+                'cert': env('CERT'),
+                'key': env('KEY')
+            }
+        }
     }
 }
 
@@ -167,11 +167,10 @@ REST_FRAMEWORK = {
     'DEFAULT_THROTTLE_RATES': {
         'user': '30/minute',
         'anon': '10/minute',
-        'password_change':'10/hour',
+        'password_change':'3/hour',
         'password_reset_request':'3/hour',
-        'password_reset':'10/hour',
-        'account_activation': '10/hour',
-        'obtain_csrf': '3/minute',
+        'password_reset':'3/hour',
+        'account_activation': '3/hour',
         'login':'3/minute',
     }
 }
@@ -188,6 +187,5 @@ SESSION_COOKIE_AGE=60*60*12
 SESSION_COOKIE_HTTPONLY=True
 SESSION_COOKIE_SAMESITE='Strict'
 SESSION_EXPIRE_AT_BROWSER_CLOSE=True
-#poniżej konfiguracja tylko po HTTPS
-#SESSION_COOKIE_SECURE=True
-#CSRF_COOKIE_SECURE=True
+SESSION_COOKIE_SECURE=True
+CSRF_COOKIE_SECURE=True
