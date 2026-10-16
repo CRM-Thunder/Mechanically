@@ -137,6 +137,4 @@ GitHub.sublime-settings
 !.vscode/launch.json 
 !.vscode/extensions.json 
 .history
-/MechanicallyApp/migrations/*
-!/MechanicallyApp/migrations/__init__.py
 __pycache__/*
