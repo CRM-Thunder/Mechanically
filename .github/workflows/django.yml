@@ -197,7 +197,7 @@ jobs:
               "TO 'mechanically'@'%';"
           )
           print(
-              "GRANT CREATE ON *.* TO 'mechanically'@'%';"
+              "GRANT ALL PRIVILEGES ON test_mechanically_test.* TO 'mechanically'@'%';"
           )
           PY
 
