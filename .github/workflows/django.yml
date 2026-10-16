@@ -305,6 +305,6 @@ jobs:
 
       - name: Retrieve sast-scan report
         if: always()
-        uses: github/codeql-action/upload-sarif@f0489abddd4e5e9dff53ed28a45b1d6f88978a1b
+        uses: github/codeql-action/upload-sarif@83e1837c6db2f3222e1ad37d8f81d38c113ca07e
         with:
           sarif_file: sast-scan.sarif
