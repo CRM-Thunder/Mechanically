@@ -196,6 +196,9 @@ jobs:
               "GRANT ALL PRIVILEGES ON mechanically_test.* "
               "TO 'mechanically'@'%';"
           )
+          print(
+              "GRANT CREATE ON *.* TO 'mechanically'@'%';"
+          )
           PY
 
           docker exec -i ci-mysql mysql \
