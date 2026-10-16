@@ -1,97 +1,305 @@
+
 name: Django CI
+
 permissions:
   contents: read
   actions: read
   security-events: write
+
 on:
   push:
-    branches: [ "master" ]
+    branches: ["master"]
   pull_request:
-    branches: [ "master" ]
+    branches: ["master"]
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
+
     strategy:
       max-parallel: 4
       matrix:
-        python-version: [3.13]
-
-    services:
-      mysql:
-        image: mysql:latest
-        env:
-          MYSQL_ROOT_PASSWORD: ${{secrets.DB_PASSWORD}}
-          MYSQL_DATABASE: ${{secrets.DB_NAME}}
-        ports:
-          - 3306:3306
-        options: >-
-          --health-cmd="mysqladmin ping"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=3
+        python-version: ["3.13"]
 
     steps:
-    - uses: actions/checkout@v5
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v6.0.0
-      with:
-        python-version: ${{ matrix.python-version }}
-    - name: Install Dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-    - name: Create .env file
-      run: |
-        echo "SECRET_KEY=${{secrets.SECRET_KEY}}" >> .env
-        echo "DB_NAME=${{secrets.DB_NAME}}" >> .env
-        echo "DB_USER=${{secrets.DB_USER}}" >> .env
-        echo "DB_PASSWORD=${{secrets.DB_PASSWORD}}" >> .env
-        echo "DB_HOST=127.0.0.1" >> .env
-        echo "DB_PORT=${{matrix.db_port}}" >> .env
-        echo "EMAIL_HOST=${{secrets.EMAIL_HOST}}" >> .env
-        echo "EMAIL_PORT=${{secrets.EMAIL_PORT}}" >> .env
-        echo "EMAIL_HOST_USER=${{secrets.EMAIL_HOST_USER}}" >> .env
-        echo "EMAIL_HOST_PASSWORD=${{secrets.EMAIL_HOST_PASSWORD}}" >> .env
-        echo "CA_CERT=${{secrets.CA_CERT}}" >> .env
+      - name: Checkout repository
+        uses: actions/checkout@v5
 
-    - name: Migrate to database
-      run: |
-        python manage.py makemigrations
-        python manage.py migrate
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v6.0.0
+        with:
+          python-version: ${{ matrix.python-version }}
 
-    - name: Run Tests
-      run: |
-        python manage.py test
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Generate MySQL TLS certificates
+        run: |
+          set -euo pipefail
+
+          CERT_DIR="$RUNNER_TEMP/mysql-certs"
+          mkdir -p "$CERT_DIR/server" "$CERT_DIR/client"
+
+          cd "$CERT_DIR"
+
+          # Generate a temporary Certificate Authority.
+          openssl genrsa -out ca-key.pem 2048
+
+          openssl req -new -x509 \
+            -key ca-key.pem \
+            -out ca.pem \
+            -days 2 \
+            -sha256 \
+            -subj "/CN=CI MySQL Test CA"
+
+          # Generate the MySQL server certificate.
+          openssl genrsa -out server/server-key.pem 2048
+
+          openssl req -new \
+            -key server/server-key.pem \
+            -out server/server.csr \
+            -subj "/CN=localhost"
+
+          printf '%s\n' \
+            'subjectAltName=DNS:localhost,IP:127.0.0.1' \
+            'extendedKeyUsage=serverAuth' \
+            'keyUsage=digitalSignature,keyEncipherment' \
+            > server/server-ext.cnf
+
+          openssl x509 -req \
+            -in server/server.csr \
+            -CA ca.pem \
+            -CAkey ca-key.pem \
+            -CAcreateserial \
+            -out server/server-cert.pem \
+            -days 2 \
+            -sha256 \
+            -extfile server/server-ext.cnf
+
+          # Generate the Django client certificate.
+          openssl genrsa -out client/client-key.pem 2048
+
+          openssl req -new \
+            -key client/client-key.pem \
+            -out client/client.csr \
+            -subj "/CN=CI Django Client"
+
+          printf '%s\n' \
+            'extendedKeyUsage=clientAuth' \
+            'keyUsage=digitalSignature' \
+            > client/client-ext.cnf
+
+          openssl x509 -req \
+            -in client/client.csr \
+            -CA ca.pem \
+            -CAkey ca-key.pem \
+            -CAcreateserial \
+            -out client/client-cert.pem \
+            -days 2 \
+            -sha256 \
+            -extfile client/client-ext.cnf
+
+          # Copy the CA certificate to the server and client directories.
+          cp ca.pem server/ca.pem
+          cp ca.pem client/ca.pem
+
+          # Set file permissions.
+          chmod 644 server/server-key.pem
+          chmod 644 server/server-cert.pem server/ca.pem
+          chmod 600 client/client-key.pem ca-key.pem
+          chmod 644 client/client-cert.pem client/ca.pem
+
+      - name: Configure and start MySQL with TLS
+        env:
+          MYSQL_ROOT_PASSWORD: ${{ secrets.CI_ROOT_DB_PASSWORD }}
+        run: |
+          set -euo pipefail
+
+          CERT_DIR="$RUNNER_TEMP/mysql-certs"
+
+          cat > "$CERT_DIR/ssl.cnf" <<'EOF'
+          [mysqld]
+          ssl_ca=/etc/mysql/certs/ca.pem
+          ssl_cert=/etc/mysql/certs/server-cert.pem
+          ssl_key=/etc/mysql/certs/server-key.pem
+          require_secure_transport=ON
+          EOF
+
+          docker run -d \
+            --name ci-mysql \
+            --publish 3306:3306 \
+            --env MYSQL_ROOT_PASSWORD="$MYSQL_ROOT_PASSWORD" \
+            --env MYSQL_DATABASE=mechanically_test \
+            --mount "type=bind,source=$CERT_DIR/server,target=/etc/mysql/certs,readonly" \
+            --mount "type=bind,source=$CERT_DIR/ssl.cnf,target=/etc/mysql/conf.d/ssl.cnf,readonly" \
+            mysql:8.4
+
+          # Wait for MySQL initialization to complete.
+          for i in $(seq 1 60); do
+            if docker exec ci-mysql mysqladmin ping \
+              --host=127.0.0.1 \
+              --user=root \
+              --password="$MYSQL_ROOT_PASSWORD" \
+              --silent; then
+              break
+            fi
+
+            if [ "$i" -eq 60 ]; then
+              docker logs ci-mysql
+              exit 1
+            fi
+
+            sleep 2
+          done
+
+          # Confirm that MySQL has TLS enabled.
+          docker exec ci-mysql mysql \
+            --user=root \
+            --password="$MYSQL_ROOT_PASSWORD" \
+            --execute="SHOW VARIABLES LIKE 'have_ssl';"
+
+      - name: Create MySQL application user
+        env:
+          MYSQL_ROOT_PASSWORD: ${{ secrets.CI_ROOT_DB_PASSWORD }}
+          CI_DB_PASSWORD: ${{ secrets.CI_DB_PASSWORD }}
+        run: |
+          set -euo pipefail
+
+          # Fail early if the required repository secret is missing.
+          if [ -z "$MYSQL_ROOT_PASSWORD" ]; then
+            echo "::error::The CI_ROOT_DB_PASSWORD repository secret is not configured."
+            exit 1
+          fi
+          if [ -z "$CI_DB_PASSWORD" ]; then
+            echo "::error::The CI_DB_PASSWORD repository secret is not configured."
+            exit 1
+          fi
+
+          # Generate SQL using an escaped SQL string literal.
+          python - <<'PY' > "$RUNNER_TEMP/create-user.sql"
+          import os
+
+          password = os.environ["CI_DB_PASSWORD"]
+
+          if any(ord(char) < 32 or ord(char) == 127 for char in password):
+              raise SystemExit("CI_DB_PASSWORD must not contain control characters.")
+
+          escaped = password.replace("\\", "\\\\").replace("'", "\\'")
+
+          print(
+              "CREATE USER 'mechanically'@'%' "
+              f"IDENTIFIED BY '{escaped}' REQUIRE X509;"
+          )
+          print(
+              "GRANT ALL PRIVILEGES ON mechanically_test.* "
+              "TO 'mechanically'@'%';"
+          )
+          PY
+
+          docker exec -i ci-mysql mysql \
+            --user=root \
+            --password="$MYSQL_ROOT_PASSWORD" \
+            < "$RUNNER_TEMP/create-user.sql"
+
+      - name: Create .env file
+        env:
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
+          CI_DB_PASSWORD: ${{ secrets.CI_DB_PASSWORD }}
+          CI_ROOT_DB_PASSWORD: ${{ secrets.CI_ROOT_DB_PASSWORD }}
+          EMAIL_HOST: ${{ secrets.EMAIL_HOST }}
+          EMAIL_PORT: ${{ secrets.EMAIL_PORT }}
+          EMAIL_HOST_USER: ${{ secrets.EMAIL_HOST_USER }}
+          EMAIL_HOST_PASSWORD: ${{ secrets.EMAIL_HOST_PASSWORD }}
+        run: |
+          set -euo pipefail
+
+          CERT_DIR="$RUNNER_TEMP/mysql-certs/client"
+
+          {
+            printf 'SECRET_KEY=%s\n' "$SECRET_KEY"
+            printf 'DB_NAME=mechanically_test\n'
+            printf 'DB_USER=mechanically\n'
+            printf 'DB_PASSWORD=%s\n' "$CI_DB_PASSWORD"
+            printf 'DB_HOST=127.0.0.1\n'
+            printf 'DB_PORT=3306\n'
+
+            # Paths consumed by settings.py.
+            printf 'CA_CERT=%s/ca.pem\n' "$CERT_DIR"
+            printf 'CERT=%s/client-cert.pem\n' "$CERT_DIR"
+            printf 'KEY=%s/client-key.pem\n' "$CERT_DIR"
+
+            printf 'EMAIL_HOST=%s\n' "$EMAIL_HOST"
+            printf 'EMAIL_PORT=%s\n' "$EMAIL_PORT"
+            printf 'EMAIL_HOST_USER=%s\n' "$EMAIL_HOST_USER"
+            printf 'EMAIL_HOST_PASSWORD=%s\n' "$EMAIL_HOST_PASSWORD"
+          } > .env
+
+          chmod 600 .env
+
+      - name: Apply database migrations
+        run: python manage.py migrate
+
+      - name: Run Tests
+        run: python manage.py test
+
+      - name: Collect MySQL logs on failure
+        if: failure()
+        run: docker logs ci-mysql
+
+      - name: Stop MySQL
+        if: always()
+        run: docker rm -f ci-mysql || true
 
   sca-scan:
     name: sca-scan (pip-audit)
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6.0.0
+        with:
+          python-version: "3.13"
+
       - name: Run sca scan
         run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
           pip install pip-audit
           pip install -r requirements.txt
-          pip-audit --format json | python -m json.tool > sca-scan.json
+          pip-audit --format json > sca-scan.json
+
       - name: Retrieve sca-scan report
         if: always()
         uses: actions/upload-artifact@v5
         with:
           name: sca-scan-report
           path: sca-scan.json
+          if-no-files-found: ignore
           retention-days: 7
 
   sast-scan:
     name: sast-scan (semgrep)
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6.0.0
+        with:
+          python-version: "3.13"
+
       - name: Run sast scan
         run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
           pip install semgrep
           semgrep --config auto --sarif --sarif-output=sast-scan.sarif
+
       - name: Retrieve sast-scan report
         if: always()
         uses: github/codeql-action/upload-sarif@v4

@@ -167,10 +167,10 @@ REST_FRAMEWORK = {
     'DEFAULT_THROTTLE_RATES': {
         'user': '30/minute',
         'anon': '10/minute',
-        'password_change':'3/hour',
-        'password_reset_request':'3/hour',
-        'password_reset':'3/hour',
-        'account_activation': '3/hour',
+        'password_change':'10/hour',
+        'password_reset_request':'10/hour',
+        'password_reset':'10/hour',
+        'account_activation': '10/hour',
         'login':'3/minute',
     }
 }
