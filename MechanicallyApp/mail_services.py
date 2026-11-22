@@ -42,7 +42,7 @@ def send_reset_password_email(user, token):
       https://<frontend>.com?/reset-password/uuid={uuid}&token={token}
 
 
-    Jeśli nie próbowałeś aktywować konta – zignoruj tę wiadomość.
+    Jeśli nie próbowałeś zresetować hasła – zignoruj tę wiadomość.
         """.strip()
 
     send_mail(
